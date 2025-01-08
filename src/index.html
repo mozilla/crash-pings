@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crash Pings</title>
+  <link rel="stylesheet" href="normalize.css/normalize.css">
+  <link rel="stylesheet" href="./main.css">
+  <link rel="stylesheet" href="@fortawesome/fontawesome-free/css/fontawesome.css">
+  <link rel="stylesheet" href="@fortawesome/fontawesome-free/css/solid.css">
+  <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  <script src="./main.ts"></script>
+  <!--
+  <script type="text/javascript">
+    /* Constants */
+    const UNSET_LABEL = "(none)";
+    const UNSET_VALUE = "__unset";
+
+    /* Global values */
+    let pings = [];
+    let filters = new Map();
+    let meta = {};
+    let loaded = null;
+
+    /* Types */
+    class Cached {
+      #dirty = true;
+      #value;
+      #update;
+
+      constructor(update) {
+        this.#update = update;
+      }
+
+      get value() {
+        if (this.#dirty) {
+          this.#value = this.#update();
+          this.#dirty = false;
+        }
+        return this.#value;
+      }
+
+      invalidate() {
+        this.#dirty = true;
+      }
+    }
+
+    class MultiSelectFilter {
+      // The filter data field.
+      #field;
+      // The filter label.
+      #label;
+      // Filter requirements, if any.
+      #requires;
+      // The options as a Map from value to option info.
+      #options;
+      // The options as a Map from field value to option info.
+      #fieldValueOptions;
+      // The options as a Map from group value to option info, if any groups exist.
+      #groupedOptions;
+      // Whether to use grouped options.
+      #grouped = false;
+      // The associated `select` element.
+      #selectElement;
+      // The group toggle element, if any groups exist.
+      #groupToggle;
+
+      constructor(filterInfo) {
+        if (filterInfo.type !== "multiselect") {
+          throw new TypeError("not a multiselect filter");
+        }
+
+        this.#field = filterInfo.field;
+        this.#label = filterInfo.pretty || filterInfo.field;
+        this.#requires = filterInfo.requires;
+
+        const valueDetails = filterInfo.values.map(v => new MultiSelectFilterOption(v));
+        mildlySmartSort(valueDetails, v => v.value);
+        if (filterInfo.unset) {
+          valueDetails.unshift(MultiSelectFilterOption.UNSET);
+        }
+
+        this.#options = new Map(valueDetails.map(v => [v.value, v]));
+        this.#fieldValueOptions = new Map(valueDetails.map(v => [v.fieldValue, v]));
+
+        {
+          const hasGroups = valueDetails.some(v => v.hasGroup);
+
+          if (hasGroups) {
+            const groupedOptions = new Map();
+            for (const v of valueDetails) {
+              if (!groupedOptions.get(v.group)) {
+                groupedOptions.set(v.group, []);
+              }
+              groupedOptions.get(v.group).push(v);
+            }
+            this.#groupedOptions = groupedOptions;
+            this.#grouped = true;
+          }
+        }
+      }
+
+      get label() {
+        return this.#label;
+      }
+
+      // The Set of currently selected values.
+      #selected = new Cached(() => {
+        let values = Array.from(this.#selectElement.selectedOptions);
+        if (this.#grouped) {
+          values = values.flatMap(o => this.#groupedOptions.get(o.value).map(v => v.fieldValue));
+        } else {
+          values = values.map(o => this.#options.get(o.value).fieldValue);
+        }
+        return new Set(values);
+      });
+
+      get selected() {
+        return this.#selected.value;
+      }
+
+      get #hasGroups() {
+        return this.#groupedOptions !== undefined;
+      }
+
+      get #disabled() {
+        if (!this.#requires) {
+          return false;
+        }
+
+        // `requires` _must_ reference labels earlier in the list of filters.
+        // We can use that assumption to simplify the logic here. We don't need
+        // a multi-pass or async approach to resolve references, and we can
+        // assume the dependent filters have been created.
+
+        let disable = false;
+        for (const [label, values] of Object.entries(this.#requires)) {
+          const dep = filters.get(label);
+          disable |= !dep || !dep.selected.isSupersetOf(new Set(values));
+        }
+        return disable;
+      }
+
+      #onChange(f) {
+        this.#selectElement.addEventListener("change", f);
+      }
+
+      render() {
+        const groupToggle = this.#hasGroups ? `<span title="Toggle groups" class="group-toggle icon fas fa-plus"></span>` : "";
+
+        // Create the element and content
+        const el = templateElement(`
+          <div class="filter">
+            <label for="${this.#field}" title="Click to select all" style="cursor:pointer">
+              ${this.#label}
+              ${groupToggle}
+            </label>
+            <select name="${this.#field}" multiple></select>
+          </div>
+        `);
+
+        this.#selectElement = el.getElementsByTagName("select")[0];
+
+        this.#renderOptions();
+
+        // Add event handlers
+        el.getElementsByTagName("label")[0].addEventListener("click", e => {
+          const select = this.#selectElement;
+          if (select.disabled) return;
+          for (const o of select.options) o.selected = true;
+          setTimeout(() => select.dispatchEvent(new Event('change')), 0);
+        });
+
+        this.#selectElement.addEventListener("change", e => {
+          this.#selected.invalidate();
+          this.#state.invalidate();
+          updateFilters();
+        });
+
+        if (groupToggle) {
+          this.#groupToggle = el.getElementsByClassName("group-toggle")[0];
+          this.#groupToggle.addEventListener("click", e => {
+            if (this.#selectElement.disabled) return;
+            this.#grouped = !this.#grouped;
+            this.#groupedChanged();
+          });
+        }
+
+        if (this.#requires) {
+          const updateDisabled = () => {
+            if (this.#disabled) {
+              this.#selectElement.setAttribute("disabled", "");
+            } else {
+              this.#selectElement.removeAttribute("disabled");
+            }
+          };
+
+          for (const label of Object.keys(this.#requires)) {
+            const dep = filters.get(label);
+            if (dep) {
+              dep.#onChange(updateDisabled);
+            }
+          }
+          updateDisabled();
+        }
+
+        return el;
+      }
+
+      #renderOptions() {
+        let optionElements;
+        if (this.#grouped) {
+          optionElements = this.#groupedOptions.keys().map(k => {
+            return `<option class="filter-option" value="${escapeHtml(k)}" selected>${k}</option>`;
+          });
+        } else {
+          optionElements = this.#options.values().map(info => {
+            return `<option class="filter-option" value="${escapeHtml(info.value)}" selected>${info.label}</option>`;
+          });
+        }
+        this.#selectElement.innerHTML = Array.from(optionElements).join("");
+      }
+
+      #groupedChanged() {
+        if (!this.#hasGroups) return;
+        if (this.#grouped) {
+          this.#groupToggle.classList.remove("fa-minus");
+          this.#groupToggle.classList.add("fa-plus");
+        } else {
+          this.#groupToggle.classList.remove("fa-plus");
+          this.#groupToggle.classList.add("fa-minus");
+        }
+        this.#renderOptions();
+        this.#selected.invalidate();
+        this.#state.invalidate();
+      }
+
+      #isActiveFor(ping) {
+        if (!this.#requires) {
+          return true;
+        }
+
+        return Object.entries(this.#requires).every(([label, values]) => {
+          const field = filters.get(label).#field;
+          // FIXME `includes` would be fairly inefficient for many values, but
+          // in practice there's only one value.
+          return values.includes(ping[field]);
+        });
+      }
+
+      filterFunction() {
+        if (this.#disabled) {
+          return undefined;
+        }
+
+        return p => !this.#isActiveFor(p) || this.selected.has(p[this.#field]);
+      }
+
+      countValues(pings) {
+        // Only return counts if there are multiple options selected.
+        if (this.#selectElement.selectedOptions.length <= 1) return [];
+
+        const counts = new Map();
+        for (const ping of pings) {
+          if (!this.#isActiveFor(ping)) {
+            continue;
+          }
+          const value = ping[this.#field];
+          const opt = this.#fieldValueOptions.get(value);
+          const label = this.#grouped ? opt.group : opt.label;
+          counts.set(label, (counts.get(label) || 0) + 1);
+        }
+
+        // Sort in descending order.
+        return Array.from(counts).sort(([ka,a],[kb,b]) => b-a);
+      }
+
+      #state = new Cached(() => {
+        let state = "";
+        if (this.#hasGroups) {
+          if (!this.#grouped) {
+            state += "e";
+          }
+        }
+
+        if (this.#selectElement.selectedOptions.length != this.#selectElement.options.length) {
+          state += JSON.stringify(Array.from(this.#selectElement.selectedOptions).map(opt => opt.value));
+        }
+
+        return state;
+      });
+
+      get state() {
+        return this.#state.value;
+      }
+
+      set state(state) {
+        if (state.startsWith("e")) {
+          state = state.slice(1);
+          this.#grouped = false;
+          this.#groupedChanged();
+        }
+        if (state.length > 0) {
+          const selected = new Set(JSON.parse(state));
+          for (const option of Array.from(this.#selectElement.options)) {
+            option.selected = selected.has(option.value);
+          }
+        }
+        setTimeout(() => this.#selectElement.dispatchEvent(new Event('change')), 0);
+      }
+    }
+
+    /* Entry Logic */
+
+    // After the page is loaded and all data is loaded, create filters.
+    Promise.all([
+      fetch("pings.json").then(r => r.json()),
+      new Promise((resolve, reject) => loaded = resolve),
+    ]).then(([data, _]) => {
+      pings = data.pings.entries().map(([idx,p]) => {
+        p["index"] = idx;
+        return p;
+      }).toArray();
+      filters = new Map(data.filters.map(f => {
+        if (f.type == 'multiselect') {
+          const filter = new MultiSelectFilter(f);
+          return [filter.label, filter];
+        } else {
+          throw new TypeError(`unexpected filter type: ${f.type}`);
+        }
+      }));
+      meta = data.meta;
+
+      createFilters();
+    });
+
+    function loadState() {
+      const state = window.location.hash.substr(1);
+      if (state) {
+        for (const part of decodeURIComponent(state).split("&")) {
+          const [label, s] = part.split("=", 2);
+          const filter = filters.get(label);
+          if (filter) {
+            filter.state = s;
+          }
+        }
+      }
+    }
+
+    function storeState() {
+      const state = filters.values().filter(f => f.state !== "").map(f => `${f.label}=${f.state}`).toArray().join("&");
+      window.location.hash = state;
+    }
+
+    window.onload = loaded;
+
+    function copyText(text) {
+      if (typeof (navigator.clipboard) == 'undefined') {
+        alert('Cannot access clipboard');
+        return;
+      }
+      navigator.clipboard.writeText(text).catch(function (error) {
+        alert(`Failed to write to clipboard: ${error.message}`);
+      });
+    }
+
+    function setClipboard(elementid) {
+      var el = document.getElementById(elementid);
+      copyText(el.innerText);
+    }
+
+    function escapeHtml(str) {
+      return str.replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll("'", '&apos;')
+        .replaceAll('"', '&quot;');
+    }
+
+    function templateElement(str) {
+      const tmpl = document.getElementById("template");
+      tmpl.innerHTML = str;
+      return tmpl.content.firstElementChild;
+    }
+
+    function filterActive(ping, filter) {
+      return Object.entries(filter.requires).every(([label, values]) => {
+        const field = filtersByLabel.get(label).field;
+        return values.includes(ping[field]);
+      });
+    }
+
+    function addTooltips(klass) {
+      for (const el of document.getElementsByClassName(klass)) {
+        if (el.offsetWidth <= el.scrollWidth) {
+          el.setAttribute('title', el.innerText);
+        }
+      }
+    }
+
+    function setSelection(el) {
+      for (const child of el.parentElement.children) {
+        child.classList.remove("selected");
+      }
+      el.classList.add("selected");
+    }
+
+    function selectPing(el, ping) {
+      setSelection(el);
+
+      const index = ping["index"];
+      fetch(`.netlify/functions/ping-details/${index}`)
+        .then(response => response.json())
+        .then(details => {
+          const stacklines = details.stack.map(s => {
+            const link = s.srcUrl ? `<a target="_blank" href="${s.srcUrl}">src</a>` : '';
+            return `
+              <div class="stackline">
+                <div class="frame-index">${s.index}</div>
+                <div class="src-link">${link}</div>
+                <div class="module-name">${s.module}</div>
+                <div class="stack-frame">${s.frame}</div>
+              </div>
+            `;
+          }).join("\n");
+
+          const el = document.getElementById("ping-detail");
+          el.innerHTML = `
+            <div class="stack">
+              ${stacklines}
+            </div>
+          `;
+
+          el.style.visibility = 'visible';
+        })
+    }
+
+    function selectSignature(el, sig) {
+      setSelection(el);
+
+      const pings = sig["pings"];
+
+      const crashesPerDate = new Map();
+      {
+        const details = document.getElementById("details");
+        details.innerHTML = '';
+        for (const ping of pings) {
+          crashesPerDate.set(ping["date"], (crashesPerDate.get(ping["date"]) || 0) + 1);
+
+          const el = templateElement(`
+            <div class="detail-meta listitem">
+              <div class="detail-meta-data-date">${ping["date"]}</div>
+              <div class="detail-meta-data-type">${ping["type"]}</div>
+              <div class="detail-meta-data-reason">${ping["reason"] || '(empty)'}</div>
+            </div>
+          `);
+          el.addEventListener('click', e => selectPing(e.currentTarget, ping));
+          details.appendChild(el);
+        }
+      }
+
+      const header = document.getElementById("signature-detail-header");
+      header.innerHTML = '';
+
+      {
+        const sparklineContainer = templateElement(`
+          <div class="sparkline-container">
+            <div class="sparkline-value">&nbsp;</div>
+            <svg class="sparkline-svg" width="300" height="50" stroke-width="1"></svg>
+          </div>
+        `);
+        const svg = sparklineContainer.children[1];
+        console.log(Array.from(crashesPerDate));
+        makeSparkline(svg, Array.from(crashesPerDate).sort((a,b) => a[0].localeCompare(b[0])).map(kvp => {return { date: kvp[0], value: kvp[1] };}));
+        header.appendChild(sparklineContainer);
+      }
+
+      for (const filter of filters.values()) {
+        const counts = filter.countValues(pings);
+        if (counts.length == 0) continue;
+
+        const list = counts
+          .map(([label,count]) => `<span title="${count} crashes">${label}</span>`)
+          .join(", ");
+        const el = templateElement(`<p><b>${filter.label}</b>: ${list}</p>`);
+        header.appendChild(el);
+      }
+
+      document.getElementById("detail").style.visibility = 'visible';
+      document.getElementById("ping-detail").style.visibility = 'hidden';
+
+      addTooltips("detail-meta-data-type");
+      addTooltips("detail-meta-data-reason");
+    }
+
+    function arrayCompare(a, b) {
+      for (let i = 0; i < a.length; i++) {
+        if (i >= b.length) return 1;
+        else if (a[i] < b[i]) return -1;
+        else if (a[i] > b[i]) return 1;
+      }
+      return b.length > a.length ? -1 : 0;
+    }
+
+    function mildlySmartSort(values, f) {
+      if (values.length == 0)
+        return;
+
+      if (/^[0-9][0-9.@ab]+$/.test(f(values[0]))) {
+        const toParts = v => v.split(/[.@ab]/).map(i => parseInt(i));
+        // Sort descending, assuming we're interested in the larger values
+        values.sort((a, b) => arrayCompare(toParts(f(a)), toParts(f(b)))).reverse();
+      } else {
+        values.sort((a, b) => f(a).localeCompare(f(b)));
+      }
+    }
+
+    function createFilters() {
+      const el = document.getElementById("filters");
+
+      for (const filter of filters.values()) {
+        el.appendChild(filter.render());
+      }
+
+      addTooltips("filter-option");
+
+      document.getElementById("metainfo").innerHTML = `Crash ping data from the past 7 days, processed at ${new Date(meta.processUnixTime * 1000)}.`;
+
+      loadState();
+      updateFilters();
+    }
+
+    function countClients(pings) {
+      return pings.reduce((clients, value) => clients.add(value["clientid"]), new Set()).size;
+    }
+
+    function updateFilters() {
+      const sort = document.getElementById("sort").getElementsByTagName("select")[0].value;
+
+      // Fill out field selections
+      const selectedFilters = filters.values().map(f => f.filterFunction()).filter(Boolean).toArray();
+
+      const pingsBySignature = new Map();
+      const getClientCount = d => d["clientcount"];
+      const getPingCount = d => d["pings"].length;
+      const sortVal = sort == "clients" ? getClientCount : getPingCount;
+
+      if (selectedFilters.length > 0) {
+        pingLoop: for (const ping of pings) {
+          if (selectedFilters.some(f => !f(ping))) {
+              continue;
+          }
+
+          if (!pingsBySignature.has(ping["signature"])) {
+            pingsBySignature.set(ping["signature"], {"pings": []});
+          }
+
+          pingsBySignature.get(ping["signature"])["pings"].push(ping);
+        }
+
+        for (const [sig, data] of pingsBySignature) {
+          data["signature"] = sig;
+          data["clientcount"] = countClients(data["pings"]);
+        }
+      }
+
+      const [totalPings, totalClients] = pingsBySignature.values().reduce(
+        ([p,c], data) => [p + getPingCount(data), c + getClientCount(data)],
+        [0,0]
+      );
+
+      const percTotal = sort == "clients" ? totalClients : totalPings;
+
+      for (const [sig, data] of pingsBySignature) {
+        data["percentage"] = sortVal(data) * 100 / percTotal;
+      }
+
+      const signatures = pingsBySignature.values().toArray().sort((a, b) => sortVal(b) - sortVal(a));
+
+      document.querySelector("#mainlist .header").innerText = `${signatures.length} signatures, ${totalClients} clients, ${totalPings} crashes`;
+
+      let sigElement = document.getElementById("signatures");
+      sigElement.innerHTML = '';
+      for (let idx = 0; idx < signatures.length; idx++) {
+        const sig = signatures[idx];
+        const el = templateElement(`
+          <div class="signature listitem">
+            <div class="hdr-rank">${idx+1}</div>
+            <div class="hdr-percent">${sig["percentage"].toFixed(1)}%</div>
+            <div class="hdr-signature"><tt>${escapeHtml(sig["signature"])}</tt></div>
+            <div class="hdr-rightpanel">
+              <div class="hdr-search"><span title="Copy signature to clipboard" onclick="copyText('${sig["signature"]}')" class="icon fas fa-copy copyicon"></span></div>
+              <div class="hdr-search"><a href='https://crash-stats.mozilla.org/search/?signature=~${encodeURIComponent(sig["signature"])}' target="_blank" title="Search for signature"><span class="icon fas fa-signature"></span></a></div>
+              <div class="hdr-clientcount">${getClientCount(sig)}</div>
+              <div class="hdr-count">${getPingCount(sig)}</div>
+            </div>
+          </div>
+        `);
+
+        el.addEventListener('click', e => selectSignature(e.currentTarget, sig));
+        sigElement.appendChild(el);
+      }
+
+      addTooltips("hdr-signature");
+      document.getElementById("detail").style.visibility = 'hidden';
+      document.getElementById("ping-detail").style.visibility = 'hidden';
+
+      storeState();
+    }
+  </script>
+  -->
+</head>
+<body>
+  <noscript>
+    <b>This page requires JavaScript to function.</b>
+  </noscript>
+  <!--
+  <div id="metainfo"></div>
+  <div id="filters"></div>
+
+  <div id="sort">
+    <label for="sort">Sort By</label>
+    <select name="sort" onchange='updateFilters()'>
+      <option selected value="clients">Clients</option>
+      <option value="crashes">Count</option>
+    </select>
+  </div>
+
+  <div id="content">
+    <div id="mainlist">
+      <div class="header"></div>
+      <div class="listheader">
+        <div class="hdr-rank">rank</div>
+        <div class="hdr-percent">%</div>
+        <div class="hdr-signature">signature</div>
+        <div class="hdr-rightpanel">
+          <div class="hdr-search"></div>
+          <div class="hdr-search"></div>
+          <div class="hdr-clientcount">clients</div>
+          <div class="hdr-count">count</div>
+        </div>
+      </div>
+      <div id="signatures"></div>
+    </div>
+
+    <div id="detail">
+      <div id="signature-detail">
+        <div id="signature-detail-header"></div>
+        <div class="detail-header">
+          <div class="detail-meta-data-date">Date</div>
+          <div class="detail-meta-data-type">Crash Type</div>
+          <div class="detail-meta-data-reason">Reason</div>
+        </div>
+        <div id="details"></div>
+      </div>
+      <div id="ping-detail"></div>
+    </div>
+  </div>
+  -->
+</body>
+</html>

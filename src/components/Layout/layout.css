@@ -1,0 +1,17 @@
+div.layout {
+	height: 100%;
+	width: 100%;
+	overflow: auto;
+}
+
+div.layout.col {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+div.layout.row {
+	display: flex;
+	flex-direction: row;
+	gap: 8px;
+}

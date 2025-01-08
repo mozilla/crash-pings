@@ -1,0 +1,543 @@
+﻿
+/* css crash styles for crash reports */
+
+body {
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-left: 8px;
+  margin-right: 8px;
+  padding: 0;
+  font: 14px Helvetica, Arial, sans-serif;
+  height: 100vh;
+}
+
+header {
+  font-size: 2em;
+}
+
+div:only-child, .flex-row > div, .flex-col > div, .flex-row, .flex-col {
+  height: 100%;
+  width: 100%;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+/*
+
+a:link {
+  color: #116594;
+  text-decoration: none;
+}
+
+a:visited {
+  color: #116594;
+  text-decoration: none;
+}
+
+#metainfo {
+  padding-top: 2px;
+}
+
+#filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter label {
+  display: block;
+}
+
+.filter label:has(~ :is([disabled])) {
+  color: grey;
+}
+
+.filter select {
+  min-width: 8em;
+  max-width: 16em;
+  width: 100%;
+}
+
+.filter .group-toggle {
+  float: right;
+  margin-left: 1em;
+}
+
+.filter select option {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.filter select option:checked {
+  background: lightblue;
+}
+
+.filter select:disabled option:checked {
+  background: lightgrey;
+}
+
+#content {
+  flex-grow: 1;
+  display: flex;
+  overflow: hidden;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+#mainlist {
+  width: 80em;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  background-color: #e8ebef;
+  border-top: 1px solid gray;
+  border-left: 1px solid gray;
+  border-right: 1px solid gray;
+  white-space: nowrap;
+  justify-content: center;
+  display: flex;
+  padding: 2px;
+}
+
+.header-elements {
+  margin: 3px;
+  display: inline-block;
+  white-space: nowrap;
+  padding:5px;
+  color: #202020;
+}
+
+.listheader {
+  background-color: #BCC6CC;
+  border: 1px solid gray;
+  white-space: nowrap;
+}
+
+.signature {
+  width: 100%;
+  background-color: #e8ebef;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#signatures {
+  border-bottom: 1px solid gray;
+  border-right: 1px solid gray;
+  border-left: 1px solid gray;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.hdr-rank {
+  display: inline-block;
+  padding: 5px;
+  width: 2em;
+  text-align: right;
+}
+
+.hdr-percent {
+  display: inline-block;
+  padding: 5px;
+  width: 3em;
+  text-align: right;
+}
+
+.hdr-signature {
+  display: inline-block;
+  padding: 5px;
+  max-width: 70%;
+  overflow-x: hidden;
+  margin-bottom: -12px;
+  text-overflow: ellipsis;
+}
+
+.hdr-search {
+  display: inline-block;
+  text-align: right;
+  padding: 5px;
+  width: 15px;
+}
+
+.oomiconclass {
+  display: inline-block;
+}
+
+.copyicon {
+  display: inline-block;
+  cursor: pointer;
+}
+
+.hdr-rightpanel {
+  display: inline-block;
+  float: right;
+}
+
+.hdr-clientcount {
+  display: inline-block;
+  padding: 5px;
+  width: 3em;
+  text-align: right;
+}
+
+.hdr-count {
+  display: inline-block;
+  padding: 5px;
+  width: 3em;
+  text-align: right;
+}
+
+.signature-meta {
+  font-size: 12px;
+  width: 100%;
+  border-top: 1px solid gray;
+  border-right: 1px solid gray;
+  border-left: 1px solid gray;
+  border-bottom: 1px solid gray;
+  background-color: #e1eef7;
+  display: inline-block;
+  margin-bottom: 0px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* signature meta data - os, version, arch listings * /
+.signature-meta-left {
+  float: left;
+  display: grid;
+  max-width: 50%;
+  border: 0px solid black;
+  white-space: nowrap;
+}
+
+.signature-meta-right {
+  float: right;
+  display: inline;
+  max-width: 49%;
+  border: 0px solid black;
+  white-space: nowrap;
+}
+
+.meta-title-os {
+  grid-row: 1;
+  grid-column: 1;
+  border: 0px solid lightgrey;
+  width: 150px;
+}
+
+.meta-title-fxver {
+  grid-row: 2;
+  grid-column: 1;
+  border: 0px solid lightgrey;
+  width: 150px;
+}
+
+.meta-title-ver {
+  grid-row: 3;
+  grid-column: 1;
+  border: 0px solid lightgrey;
+  width: 150px;
+}
+
+.meta-title-arch {
+  grid-row: 4;
+  grid-column: 1;
+  border: 0px solid lightgrey;
+  width: 150px;
+}
+
+/* signature meta data rows * /
+
+.meta-data-os {
+  grid-row: 1;
+  grid-column: 2;
+  border: 0px solid lightgrey;
+  margin: 1px;
+  width: auto;
+}
+
+.meta-data-fxver {
+  grid-row: 2;
+  grid-column: 2;
+  border: 0px solid lightgrey;
+  margin: 1px;
+  width: auto;
+}
+
+.meta-data-ver {
+  grid-row: 3;
+  grid-column: 2;
+  border: 0px solid lightgrey;
+  margin: 1px;
+  width: auto;
+}
+
+.meta-data-arch {
+  grid-row: 4;
+  grid-column: 2;
+  border: 0px solid lightgrey;
+  margin: 1px;
+  width: auto;
+}
+
+.sparkline-container {
+  margin: 2px;
+  border: 1px solid gray;
+  background-color: #fafafa;
+  float: right;
+}
+
+.sparkline-value {
+  font-size: 9px;
+  margin: 1px;
+  width: auto;
+  border: solid 0px black;
+  white-space: nowrap;
+}
+
+.sparkline-svg {
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+#detail {
+  width: 60em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+#signature-detail {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid gray;
+  flex: 1 1 0;
+}
+
+#ping-detail {
+  flex: 1 1 0;
+  border: 1px solid gray;
+  padding: 2px;
+  visibility: hidden;
+  overflow: auto;
+}
+
+#signature-detail-header {
+  padding: 2px;
+  border-bottom: 1px solid gray;
+}
+
+#signature-detail-header p {
+  margin: 2px 0;
+}
+
+#details {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.detail-header {
+  background-color: #BCC6CC;
+  border-bottom: 1px solid gray;
+  white-space: nowrap;
+  display: flex;
+
+}
+
+.detail-meta {
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  cursor: pointer;
+}
+
+.listitem {
+  border-top: 1px solid gray;
+  background-color: #e8ebef;
+}
+
+.listitem:nth-child(1) {
+  border-top: 0;
+}
+
+.listitem:nth-child(odd) {
+  background-color: #c3c6ca;
+}
+
+.listitem.selected {
+  background-color: lightblue;
+}
+
+.detail-meta-data-date {
+  padding: 5px;
+  flex: 0 0 6em;
+  display: inline-block;
+}
+
+.detail-meta-data-type {
+  padding: 5px;
+  flex: 0 0 18em;
+  display: inline-block;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-meta-data-reason {
+  padding: 5px;
+  display: inline-block;
+  flex-grow: 1;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.stack {
+  display: inline-block;
+  padding-left: 10px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.stackline {
+  padding: 1px;
+  white-space: nowrap;
+}
+
+.frame-index {
+  display: inline-block;
+  white-space: nowrap;
+  min-width: 1em;
+  text-align: right;
+}
+
+.src-link {
+  display: inline-block;
+  white-space: nowrap;
+  min-width: 3ch;
+  text-align: center;
+}
+
+.module-name {
+  display: inline-block;
+  white-space: nowrap;
+  min-width: 10em;
+}
+
+.stack-frame {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.processeddate {
+}
+
+.annotation-container {
+  position: absolute;
+  color: #183a4e;
+  z-index: 2;
+  background-color: #e1eef7;
+  top: 10px;
+  left: 10%;
+  right: 10%;
+  min-height: 150px;
+  min-width: 300px;
+  border: 1px solid lightgray;
+  border-radius: 3px;
+  padding: 10px;
+}
+
+.ann-hdr {
+  display: inline-block;
+  white-space: nowrap;
+  border: solid 0px blue;
+  width: 100%;
+}
+
+.ann-fixed-by {
+  display: inline-block;
+  white-space: nowrap;
+  width: 150px;
+  border: solid 0px gray;
+}
+
+.ann-notes {
+  display: inline-block;
+  white-space: nowrap;
+  border: solid 0px gray;
+}
+
+@keyframes delayed-hide {
+  to {
+    visibility: hidden;
+  }
+}
+
+.delayed-hide {
+  visibility: visible;
+  animation: 0s linear 2.3s forwards delayed-hide;
+}
+
+.icon {
+  color: #617482;
+}
+
+.lticon {
+  color: lightgray;
+}
+
+.grayicon {
+  color: #a2b0bb;
+}
+
+.noicon {
+  visibility:hidden;
+}
+
+/* line with highlight area * /
+.sparkline {
+  stroke: #3288ca;
+  fill: #c8def0;
+}
+
+/* change the spot color * /
+.sparkline--spot {
+  stroke: #3288ca;
+  fill: #c8def0;
+}
+
+/* change the cursor color * /
+.sparkline--cursor {
+  stroke: #3288ca;
+}
+
+/* style fill area and line colors using specific class name * /
+.sparkline--fill {
+  fill: #c8def0;
+}
+
+.sparkline--line {
+  stroke: #3288ca;
+}
+
+.clickdiv {
+  cursor: pointer;
+  font-weight: bold;
+  color: #116594;
+}
+*/

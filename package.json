@@ -1,0 +1,30 @@
+{
+  "name": "crash-pings",
+  "version": "1.0.0",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mozilla/crash-pings.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mozilla/crash-pings/issues"
+  },
+  "description": "Crash ping website.",
+  "homepage": "https://github.com/mozilla/crash-pings#readme",
+  "license": "MPL-2.0",
+  "scripts": {
+    "type-check": "tsc --noEmit; tsc --noEmit -p src",
+    "dev": "bun run bun/serve.ts",
+    "build": "bun run bun/build.ts",
+    "dist": "NODE_ENV=production bun run build"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.16",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "normalize.css": "^8.0.1",
+    "solid-js": "^1.9.4"
+  }
+}

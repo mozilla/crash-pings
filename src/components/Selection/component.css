@@ -1,0 +1,31 @@
+.filter label {
+  margin-top: 1em;
+  display: block;
+}
+
+.filter label:has(~ :is([disabled])) {
+  color: grey;
+}
+
+.filter select {
+  width: 100%;
+}
+
+.filter .group-toggle {
+  float: right;
+  margin-left: 1em;
+}
+
+.filter select option {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.filter select option:checked {
+  background: lightblue;
+}
+
+.filter select:disabled option:checked {
+  background: lightgrey;
+}
+
