@@ -1,14 +1,12 @@
 import type { AllPings, Ping } from "../../data/source";
+import type { IStringPingField } from "../../data/format";
 import type { MultiselectFilterSpec } from "./MultiselectFilter";
 
-export type FieldValue = string | null;
+export type FieldValue = number;
 
-export type PingStringField = keyof {
-    [Key in keyof Ping as Ping[Key] extends FieldValue ? Key : never]: any;
-};
+export type FilterField = IStringPingField;
 
 export type { AllPings, Ping, FilterSpec };
 export default interface FilterSpec {
-    build(pings: AllPings): void;
-    finish(): MultiselectFilterSpec[];
+    build(pings: AllPings): MultiselectFilterSpec[];
 }

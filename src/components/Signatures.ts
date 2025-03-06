@@ -1,4 +1,6 @@
-import type { Ping } from "../data_source";
+import type { Ping } from "../data/source";
+import type { StringIndex } from "../data/format";
+import { allPings } from "../data/source";
 import { createMemo, createEffect, on } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "./Selectable";
@@ -17,10 +19,6 @@ export class SignatureInfo extends SingleSelectable(Object) {
     }
 }
 
-function countClients(pings: Ping[]) {
-    return pings.reduce((clients, value) => clients.add(value["clientid"]), new Set()).size;
-}
-
 export default function Signatures(props: {
     sort: "clients" | "pings",
     pings: Ping[],
@@ -37,15 +35,22 @@ export default function Signatures(props: {
     createEffect(on(() => props.pings, () => selectSignature(undefined)));
 
     const processed = createMemo(() => {
+        const pingData = allPings();
+        const allSignatures = pingData.signature;
+        const allClients = pingData.clientid;
+
+        const countClients = (pings: Ping[]): number => new Set(pings.map(p => allClients.values[p])).size;
+
         const bySignature = props.pings.reduce((map, ping) => {
-            if (ping.signature) {
-                if (!map.has(ping.signature)) {
-                    map.set(ping.signature, new SignatureInfo(ping.signature));
+            const signature = allSignatures.values[ping];
+            if (signature !== 0) {
+                if (!map.has(signature)) {
+                    map.set(signature, new SignatureInfo(allSignatures.getString(signature)!));
                 }
-                map.get(ping.signature)!.pings.push(ping);
+                map.get(signature)!.pings.push(ping);
             }
             return map;
-        }, new Map<string, SignatureInfo>());
+        }, new Map<StringIndex, SignatureInfo>());
 
         const signatures = bySignature.values().toArray();
 

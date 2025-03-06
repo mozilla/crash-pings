@@ -12,8 +12,9 @@
   "description": "Crash ping website.",
   "homepage": "https://github.com/mozilla/crash-pings#readme",
   "license": "MPL-2.0",
+  "type": "module",
   "scripts": {
-    "type-check": "tsc --noEmit; tsc --noEmit -p src",
+    "type-check": "tsc --noEmit; tsc --noEmit -p src; tsc --noEmit -p netlify/functions",
     "dev": "bun run bun/serve.ts",
     "build": "bun run bun/build.ts",
     "dist": "NODE_ENV=production bun run build"
@@ -24,6 +25,8 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.7.2",
+    "@netlify/blobs": "^8.1.1",
+    "@netlify/functions": "^3.0.1",
     "normalize.css": "^8.0.1",
     "solid-js": "^1.9.4"
   }

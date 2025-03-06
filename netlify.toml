@@ -1,0 +1,15 @@
+[build]
+publish = "dist/"
+command = "bun run type-check && bun run build"
+
+[build.environment]
+NODE_ENV = "production"
+
+[context.dev.environment]
+NODE_ENV = "development"
+
+[dev]
+command = "bun run dev"
+port = 8888
+targetPort = 3000
+framework = "#custom"

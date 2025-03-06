@@ -9,7 +9,7 @@ import "./component.css";
 export { FiltersForField, MultiselectFilter };
 
 export type FilterInfo = {
-    countFilterValues(pings: Ping[]): { filterLabel: string, counts: { value: string, count: number }[] }[],
+    countFilterValues(pings: Ping[]): { filterLabel: string, counts: { label: string, count: number }[] }[],
 };
 
 export default function Selection(props: {
@@ -20,12 +20,8 @@ export default function Selection(props: {
 }) {
     const filters = createMemo(() => {
         const specs = props.children;
-        for (const ping of props.pings) {
-            for (const spec of specs) {
-                spec.build(ping);
-            }
-        }
-        return specs.flatMap(spec => spec.finish());
+        const pings = props.pings;
+        return specs.flatMap(spec => spec.build(pings));
     });
     const components = createMemo(() => {
         const filtersByField = new Map(filters().map(f => [f.field, f]));
@@ -33,11 +29,11 @@ export default function Selection(props: {
     });
 
     createEffect(() => {
-        const filterFunctions = filters().flatMap(filter => {
-            const f = filter.filterFunction();
-            return f ? [f] : [];
-        });
-        props.selectedPings(props.pings.filter(ping => filterFunctions.every(f => f(ping))));
+        const pings = filters().reduce(
+            (pings, filter) => filter.filterPings(pings),
+            new Set(props.pings.crashid.keys())
+        );
+        props.selectedPings(pings.keys().toArray());
     });
 
     createEffect(() => {

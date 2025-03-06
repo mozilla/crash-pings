@@ -3,16 +3,19 @@ import html from "solid-js/html";
 import SingleSelectable from "./Selectable";
 import type { FilterInfo } from "./Selection";
 import { SignatureInfo } from "./Signatures";
-import type { Ping } from "../data_source";
+import type { Ping } from "../data/source";
+import { allPings } from "../data/source";
 import { makeSparkline } from "../sparkline";
 
 export class PingInfo extends SingleSelectable(Object) {
+    ping: Ping;
+
     constructor(ping: Ping) {
         super();
-        Object.assign(this, ping);
+        this.ping = ping;
     }
 }
-export interface PingInfo extends Ping { }
+//export interface PingInfo extends Ping { }
 
 export default function SignatureDetail(props: {
     signature: SignatureInfo | undefined,
@@ -31,17 +34,18 @@ export default function SignatureDetail(props: {
 
     const detail = (signature: SignatureInfo) => {
         const pingInfos = signature.pings.map(ping => new PingInfo(ping));
+        const pingData = allPings();
 
-        const pings = pingInfos.map(ping => html`
-            <div class="detail-meta listitem" classList="${() => ping.selectedClassList}" onClick=${(_: Event) => selectPing(ping)}>
-              <div class="detail-meta-data-date">${ping.date}</div>
-              <div class="detail-meta-data-type">${ping.type}</div>
-              <div class="detail-meta-data-reason">${ping.reason ?? '(empty)'}</div>
+        const pings = pingInfos.map(info => html`
+            <div class="detail-meta listitem" classList="${() => info.selectedClassList}" onClick=${(_: Event) => selectPing(info)}>
+              <div class="detail-meta-data-date">${pingData.date[info.ping]}</div>
+              <div class="detail-meta-data-type">${pingData.type.getPingString(info.ping)}</div>
+              <div class="detail-meta-data-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
             </div>
         `);
 
         const crashesPerDate = signature.pings.reduce((map, ping) => {
-            const date = ping.date.split("T", 2)[0];
+            const date = pingData.date[ping].split("T", 2)[0];
             map.set(date, (map.get(date) || 0) + 1);
             return map;
         }, new Map<string, number>());
@@ -57,7 +61,7 @@ export default function SignatureDetail(props: {
 
         const filterCounts = () => props.filterInfo.countFilterValues(signature.pings)
             .map(filter => {
-                const values = filter.counts.flatMap(v => [html`<span title=${`${v.count} crashes`}>${v.value}</span>`, ", "]);
+                const values = filter.counts.flatMap(v => [html`<span title=${`${v.count} crashes`}>${v.label}</span>`, ", "]);
                 values.length -= 1; // drop the last ", "
                 return html`
                     <p><b>${filter.filterLabel}</b>: ${values}</p>

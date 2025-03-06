@@ -7,7 +7,11 @@ export default function PingDetail(props: {
 }) {
     const showPing = (ping: PingInfo) => {
         let stacklines;
-        if (!ping.stack) {
+        // TODO
+        stacklines = "TODO: fetch stack";
+        ping;
+        /*
+        if (!pingData.stack) {
             stacklines = "(no stack)";
         } else {
             stacklines = ping.stack.map(s => {
@@ -22,6 +26,7 @@ export default function PingDetail(props: {
                 `;
             });
         }
+        */
 
         return html`<div class="stack">${stacklines}</div>`;
     };

@@ -1,31 +1,30 @@
-import type { FilterSpec, Ping, PingStringField, FieldValue } from "./FilterSpec";
+import type { AllPings, FilterSpec, FilterField, FieldValue } from "./FilterSpec";
+import type { MultiselectFilterSpec } from "./MultiselectFilter";
 
 class FiltersForFieldSpec implements FilterSpec {
-    field: PingStringField;
-    gen: (value: NonNullable<FieldValue>) => FilterSpec;
-    values: { [value: NonNullable<FieldValue>]: FilterSpec } = {};
+    field: FilterField;
+    gen: (value: string) => FilterSpec;
+    values: [FieldValue, FilterSpec][] = [];
 
-    constructor(field: PingStringField, gen: (value: NonNullable<FieldValue>) => FilterSpec) {
+    constructor(field: FilterField, gen: (value: string) => FilterSpec) {
         this.field = field;
         this.gen = gen;
     }
 
-    build(ping: Ping) {
-        const val = ping[this.field];
-        if (val) {
-            (this.values[val] ??= this.gen(val)).build(ping);
-        }
-    }
+    build(pings: AllPings) {
+        const field = pings[this.field];
 
-    finish() {
-        const values = Object.entries(this.values);
+        const values = field.strings.map(([_, s]) => {
+            const filters = this.gen(s).build(pings);
+            return [s, filters] as [string, MultiselectFilterSpec[]];
+        }).toArray();
         values.sort(([ka, _a], [kb, _b]) => ka.localeCompare(kb));
-        return values.flatMap(([_, f]) => f.finish());
+        return values.flatMap(([_, fs]) => fs);
     }
 }
 
 export default function FiltersForField(props: {
-    field: PingStringField,
+    field: FilterField,
     children: (value: string) => FilterSpec,
 }): FiltersForFieldSpec {
     return new FiltersForFieldSpec(props.field, props.children);

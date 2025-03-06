@@ -11,41 +11,50 @@ export const PING_FIELDS = {
     date: "string",
     reason: "istring",
     type: "istring",
-    minidump_sha256_hash: "string",
+    minidump_sha256_hash: "nstring",
     startup_crash: "boolean",
     build_id: "istring",
     signature: "istring",
 } as const;
 
 export type PingFields = typeof PING_FIELDS;
+export type IStringPingField = keyof {
+    [Key in keyof PingFields as PingFields[Key] extends "istring" ? Key : never]: any;
+};
 
 export function pingFields(): [keyof PingFields, PingFields[keyof PingFields]][] {
     return Object.entries(PING_FIELDS) as any;
 }
 
-export type TypeMap<ISTRING> = {
-    istring: ISTRING,
+export type TypeMap<IString> = {
+    istring: IString,
     string: string,
-    boolean: boolean,
+    nstring: string | null,
+    boolean: boolean | null,
 };
+
+type NoIString = Omit<TypeMap<null>, 'istring'>;
+type Arrayify<T> = {
+    [K in keyof T]: T[K][];
+};
+
+export type IStringData<Values> = { strings: string[], values: Values };
+
+export interface ArrayTypeMap<IString> extends Arrayify<NoIString> {
+    istring: IString,
+}
 
 export type StringIndex = number;
-
-export type Ping<ISTRING> = {
-    [K in keyof PingFields]: TypeMap<ISTRING>[PingFields[K]] | null;
+export type Pings<IString = IStringData<StringIndex[]>> = {
+    [K in keyof PingFields]: ArrayTypeMap<IString>[PingFields[K]];
 };
 
-export type StructOfArrays<T> = {
-    [K in keyof T]: T[K][]
-};
-
-export type Pings<ISTRING> = StructOfArrays<Ping<ISTRING>>;
-
-export type CondensedData = {
-    strings: string[],
-    pings: Pings<StringIndex>,
-};
-
-export function emptyPings<T>(): Pings<T> {
-    return Object.fromEntries(Object.keys(PING_FIELDS).map(k => [k, []])) as any;
+export function emptyPings<T>(emptyIString: () => T, emptyArray: () => any[] = () => []): Pings<T> {
+    return Object.fromEntries(Object.entries(PING_FIELDS).map(([k, v]) => {
+        if (v === "istring") {
+            return [k, emptyIString()];
+        } else {
+            return [k, emptyArray()];
+        }
+    })) as any;
 }

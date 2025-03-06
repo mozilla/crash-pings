@@ -3,3 +3,6 @@ node_modules
 
 # For local development
 *.dev.json
+
+# Local Netlify folder
+.netlify

@@ -5,6 +5,8 @@
       "name": "crash-pings",
       "dependencies": {
         "@fortawesome/fontawesome-free": "^6.7.2",
+        "@netlify/blobs": "^8.1.1",
+        "@netlify/functions": "^3.0.1",
         "normalize.css": "^8.0.1",
         "solid-js": "^1.9.4",
       },
@@ -16,6 +18,12 @@
   },
   "packages": {
     "@fortawesome/fontawesome-free": ["@fortawesome/fontawesome-free@6.7.2", "", {}, "sha512-JUOtgFW6k9u4Y+xeIaEiLr3+cjoUPiAuLXoyKOJSia6Duzb7pq+A76P9ZdPDoAoxHdHzq6gE9/jKBGXlZT8FbA=="],
+
+    "@netlify/blobs": ["@netlify/blobs@8.1.1", "", {}, "sha512-7Dg3PzArvQ0Owq4wpkLECC9iaDBOxuWUN2uwbQtUF6tZssyez2QN+eO0CjuIhhZUivbw+X9bwsyiEjWkdJnv/A=="],
+
+    "@netlify/functions": ["@netlify/functions@3.0.1", "", { "dependencies": { "@netlify/serverless-functions-api": "1.35.0" } }, "sha512-KqVvGatPnn3lw80vXsFbYV3H2S9FI9TQHneFVR6BBvfHWiqTvs8NwUoBpnUWgqPKKeUMuynycDabeSi9CW2WWw=="],
+
+    "@netlify/serverless-functions-api": ["@netlify/serverless-functions-api@1.35.0", "", {}, "sha512-BH9eF3s7bUbqkcEUMR7dne/iCXSpZD10KVkGcs53eDrON5pKxsMdXvrdAx/q0HD24vJgHXGXObGSr5sjPllGEA=="],
 
     "@types/bun": ["@types/bun@1.1.16", "", { "dependencies": { "bun-types": "1.1.43" } }, "sha512-E+ue6NMcn4FXC5bDRE1W/BXUVs01h5Mt02qH8/8HGCox9akuh8KNOFdwvaQS9TDgT2RmUyJYFRRqA60WtTnm2g=="],
 

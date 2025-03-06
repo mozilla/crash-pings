@@ -55,16 +55,16 @@ function osVersionName(os: string): ((version: string) => string | undefined) | 
     }
 }
 
-function osVersionCreateValue(os: string): ((version: string) => { value: string, label?: string, group?: string }) {
+function osVersionCreateValue(os: string): ((value: number, version: string) => { value: number, label: string, group?: string }) {
     const versionName = osVersionName(os);
-    return (version: string) => {
+    return (value: number, version: string) => {
         if (versionName) {
             const group = versionName(version);
             if (group) {
-                return { label: `${group} (${version})`, group, value: version };
+                return { label: `${group} (${version})`, group, value };
             }
         }
-        return { value: version };
+        return { value, label: version };
     };
 }
 
@@ -80,7 +80,7 @@ export default function App() {
     const [filterInfo, setFilterInfo] = createSignal<FilterInfo>();
     const [selectedPing, setSelectedPing] = createSignal<PingInfo>();
 
-    setSources(["condensed_info.json"]);
+    setSources(["ping_data/2025-02-01", "ping_data/2025-02-02", "ping_data/2025-02-03", "ping_data/2025-02-04", "ping_data/2025-02-05", "ping_data/2025-02-06", "ping_data/2025-02-07"]);
 
     return html`
     <${Layout} column>
@@ -92,7 +92,7 @@ export default function App() {
                         <${MultiselectFilter} field="channel" />
                         <${MultiselectFilter} field="process" />
                         <${MultiselectFilter} field="ipc_actor" prettyName="utility ipc actor"
-                            requires=${{ "process": "utility" }} allowNull />
+                            requires=${{ "process": "utility" }} allowNull=true />
                         <${MultiselectFilter} field="version" />
                         <${MultiselectFilter} field="os" />
                         <${FiltersForField} field="os">${osVersionFilter}<//>
