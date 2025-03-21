@@ -74,9 +74,9 @@ type RedashApiResult<T> = {
 	}
 };
 
-async function fetchRedash(method: "POST", apiEndpoint: string, parameters: { date: string, count: number }): Promise<RedashApiResult<Ping>>;
+async function fetchRedash(method: "POST", apiEndpoint: string, parameters: { date: string }): Promise<RedashApiResult<Ping>>;
 async function fetchRedash(method: "GET", apiEndpoint: string): Promise<RedashApiResult<Ping>>;
-async function fetchRedash(method: string, apiEndpoint: string, parameters?: { date: string, count: number }): Promise<RedashApiResult<Ping>> {
+async function fetchRedash(method: string, apiEndpoint: string, parameters?: { date: string }): Promise<RedashApiResult<Ping>> {
 	const request: RequestInit = {
 		method,
 		headers: {
@@ -93,8 +93,8 @@ async function fetchRedash(method: string, apiEndpoint: string, parameters?: { d
 	return await response.json();
 }
 
-async function fetchData(date: string, count: number): Promise<Ping[]> {
-	let result = await fetchRedash("POST", `queries/${REDASH_QUERY_ID}/results`, { date, count });
+async function fetchData(date: string): Promise<Ping[]> {
+	let result = await fetchRedash("POST", `queries/${REDASH_QUERY_ID}/results`, { date });
 	while (true) {
 		if ("query_result" in result) {
 			return result.query_result.data.rows;
@@ -130,12 +130,13 @@ export default async (_req: Request, context: Context): Promise<Response> => {
 	const store = getStore("ping-data");
 	let dataStream: ReadableStream = await store.get(date, { type: "stream" }) as ReadableStream;
 	if (!dataStream) {
-		const pings: Ping[] = await fetchData(date, 10000);
+		const pings: Ping[] = await fetchData(date);
 		const condensed = condenseData(pings);
 		const gzipped = gzipSync(JSON.stringify(condensed))
-		const blobbed = new Blob([gzipped]);
-
-		await store.set(date, blobbed);
+		if (pings.length > 0) {
+			const blobbed = new Blob([gzipped]);
+			await store.set(date, blobbed);
+		}
 
 		dataStream = Readable.toWeb(Readable.from(gzipped));
 	}

@@ -8,7 +8,7 @@ export const PING_FIELDS = {
     os: "istring",
     osversion: "istring",
     arch: "istring",
-    date: "string",
+    date: "istring",
     reason: "istring",
     type: "istring",
     minidump_sha256_hash: "nstring",

@@ -5,12 +5,6 @@ const watcher = watch('./src', { recursive: true });
 
 const server = Bun.serve({
    port: 3000,
-   /*
-   static: {
-      "/ping_info.json": new Response(await Bun.file("ping_info.json").bytes()),
-      "/condensed_info.json": new Response(await Bun.file("condensed_info.json").bytes()),
-   },
-   */
    fetch(req) {
       var path = new URL(req.url).pathname;
       if (path === "/") {

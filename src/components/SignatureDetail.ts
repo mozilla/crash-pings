@@ -38,19 +38,25 @@ export default function SignatureDetail(props: {
 
         const pings = pingInfos.map(info => html`
             <div class="detail-meta listitem" classList="${() => info.selectedClassList}" onClick=${(_: Event) => selectPing(info)}>
-              <div class="detail-meta-data-date">${pingData.date[info.ping]}</div>
+              <div class="detail-meta-data-date">${pingData.date.getPingString(info.ping)}</div>
               <div class="detail-meta-data-type">${pingData.type.getPingString(info.ping)}</div>
               <div class="detail-meta-data-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
             </div>
         `);
 
         const crashesPerDate = signature.pings.reduce((map, ping) => {
-            const date = pingData.date[ping].split("T", 2)[0];
+            const date = pingData.date.values[ping];
             map.set(date, (map.get(date) || 0) + 1);
             return map;
-        }, new Map<string, number>());
+        }, new Map<number, number>());
 
-        const sparklineData = Array.from(crashesPerDate).sort((a, b) => a[0].localeCompare(b[0])).map(kvp => { return { date: kvp[0], value: kvp[1] }; });
+        // There shouldn't be any null dates, but just to ensure we get a
+        // non-null date string, remove the 0 entry.
+        crashesPerDate.delete(0);
+        const sparklineData = crashesPerDate.entries()
+            .map(([date, value]) => { return { date: pingData.date.getString(date)!, value }; })
+            .toArray()
+            .sort((a, b) => a.date.localeCompare(b.date));
 
         const sparkline = html`
             <div class="sparkline-container">

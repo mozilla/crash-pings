@@ -1,5 +1,6 @@
 import { createSignal, Suspense } from "solid-js";
 import html from "solid-js/html";
+import DateFilter from "./DateFilter";
 import Selection, { FiltersForField, MultiselectFilter } from "./Selection";
 import type { FilterInfo } from "./Selection";
 import Signatures, { SignatureInfo } from "./Signatures";
@@ -80,11 +81,14 @@ export default function App() {
     const [filterInfo, setFilterInfo] = createSignal<FilterInfo>();
     const [selectedPing, setSelectedPing] = createSignal<PingInfo>();
 
-    setSources(["ping_data/2025-02-01", "ping_data/2025-02-02", "ping_data/2025-02-03", "ping_data/2025-02-04", "ping_data/2025-02-05", "ping_data/2025-02-06", "ping_data/2025-02-07"]);
+    const setDates = (dates: string[]) => setSources(dates.map(date => `ping_data/${date}`));
 
     return html`
     <${Layout} column>
-        <header>Crash Pings</header>
+        <${Layout} row size="content">
+            <header>Crash Pings</header>
+            <${DateFilter} dates=${setDates} />
+        <//>
         <${Suspense} fallback=${html`<p>Loading data...</p>`}>
             <${Layout} row>
                 <${Layout} size="14em">
