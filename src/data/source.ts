@@ -117,8 +117,19 @@ function joinData(allData: Pings[]): AllPings {
     return pings as any;
 }
 
+// Retry fetches as long as 202 status is returned.
+const RETRY_TIME_MS = 2000;
+async function fetchRetryOn202(url: string): Promise<Response> {
+    let response = await fetch(url);
+    while (response.status === 202) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_TIME_MS));
+        response = await fetch(url);
+    }
+    return response;
+}
+
 async function fetchSources(sources: string[]): Promise<AllPings> {
-    const allData: Pings[] = await Promise.all(sources.map(s => fetch(s).then(r => r.json())));
+    const allData: Pings[] = await Promise.all(sources.map(s => fetchRetryOn202(s).then(r => r.json())));
     return joinData(allData);
 }
 
