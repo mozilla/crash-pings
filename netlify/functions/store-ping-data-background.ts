@@ -1,8 +1,10 @@
 import { gzipSync } from "node:zlib";
-import { emptyPings, pingFields } from "app/data/format.ts";
+import { emptyPings, pingFields, DATA_VERSION } from "app/data/format.ts";
 import type { IStringPingField, PingFields, TypeMap, Pings, StringIndex } from "app/data/format.ts";
 import type { Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
+
+const EMPTY_RETRY_MS = 1000 * 60 * 15; // 15 minutes, as milliseconds
 
 type Ping = {
 	[K in keyof PingFields]: TypeMap<string>[PingFields[K]];
@@ -122,25 +124,36 @@ async function fetchData(date: string): Promise<Ping[]> {
 	}
 }
 
+const LOCAL_PSK = process.env["NETLIFY_LOCAL_PSK"];
+
 export default async (req: Request, _context: Context) => {
+	// Only allow 'local' requests from our own functions.
+	if (!LOCAL_PSK || req.headers.get("Authorization") !== `PSK ${LOCAL_PSK}`) {
+		throw new Error("Unauthorized");
+	}
+
 	const { date } = await req.json() as { date: string };
 
-	const store = getStore("ping-data");
-	if (await store.getMetadata(date) !== null) {
-		return;
-	}
+	const currentDate = new Date();
 
 	const requestStore = getStore("ping-data-request");
-	if (await requestStore.get(date) !== null) {
-		return;
-	}
-	requestStore.set(date, new Date().toISOString());
+	// Set a marker as a best-effort to prevent multiple concurrent (and
+	// unnecessary) background functions for a particular date.
+	await requestStore.set(date, currentDate.toISOString());
 
 	const pings: Ping[] = await fetchData(date);
+
+	const metadata = {
+		date: currentDate.toISOString(),
+		retry: pings.length === 0 ? currentDate.getTime() + EMPTY_RETRY_MS : 0,
+		version: DATA_VERSION
+	};
+
 	const condensed = condenseData(pings);
 	const gzipped = gzipSync(JSON.stringify(condensed))
-	if (pings.length > 0) {
-		const blobbed = new Blob([gzipped]);
-		await store.set(date, blobbed);
-	}
+
+	const store = getStore("ping-data");
+	await store.set(date, new Blob([gzipped]), { metadata });
+
+	await requestStore.delete(date);
 };

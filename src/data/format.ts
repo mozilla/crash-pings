@@ -1,3 +1,5 @@
+export const DATA_VERSION = 1;
+
 export const PING_FIELDS = {
     channel: "istring",
     process: "istring",
