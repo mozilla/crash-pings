@@ -93,22 +93,28 @@ export class MultiselectFilterSpec implements FilterSpec {
         return [this];
     }
 
-    filterPings(pings: Set<Ping>): Set<Ping> {
+    filterFunction(): ((ping: Ping) => boolean) | undefined {
         if (this.#disabled()) {
-            return pings;
+            return undefined;
         }
 
         const selectedValues = this.selectedValues();
 
-        const filterPings = (pings: Set<Ping>): Set<Ping> =>
-            new Set(pings.keys().filter(p => selectedValues.has(this.pingValues!.values[p])));
+        // If all possible values are selected, don't filter anything (this
+        // speeds things up considerably). This optimization assumes all values
+        // are non-null (null values would always be filtered out otherwise).
+        if (selectedValues.size === this.#fieldValueOptions.size) {
+            return undefined;
+        }
+
+        const selectedValuesHasPingValue = (ping: Ping) => selectedValues.has(this.pingValues!.values[ping]);
 
         if (this.#limitTo) {
-            const toFilter = pings.intersection(this.#limitTo);
-            return filterPings(toFilter).union(pings.difference(toFilter));
+            const limitTo = this.#limitTo;
+            return (ping: Ping) => !limitTo.has(ping) || selectedValuesHasPingValue(ping);
         }
         else {
-            return filterPings(pings);
+            return selectedValuesHasPingValue;
         }
     }
 

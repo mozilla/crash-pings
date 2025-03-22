@@ -29,11 +29,14 @@ export default function Selection(props: {
     });
 
     createEffect(() => {
-        const pings = filters().reduce(
-            (pings, filter) => filter.filterPings(pings),
-            new Set(props.pings.crashid.keys())
-        );
-        props.selectedPings(pings.keys().toArray());
+        const filterFunctions = filters().map(filter => filter.filterFunction()).filter(x => x !== undefined);
+        const pings = [];
+        for (let i = 0; i < props.pings.crashid.length; i++) {
+            if (filterFunctions.every(f => f(i))) {
+                pings.push(i);
+            }
+        }
+        props.selectedPings(pings);
     });
 
     createEffect(() => {
