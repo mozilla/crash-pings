@@ -4,6 +4,8 @@ import { allPings } from "../data/source";
 import { createMemo, createEffect, on } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "./Selectable";
+import Layout from "./Layout";
+import { VList } from "virtua/solid";
 
 export class SignatureInfo extends SingleSelectable(Object) {
     signature: string;
@@ -85,8 +87,7 @@ export default function Signatures(props: {
         </header>`;
     };
 
-    const signatures = () => {
-        return sortedSignatures().map((sig, idx) => html`
+    const renderSignature = (sig: SignatureInfo, idx: number) => html`
           <div onClick=${(_: Event) => selectSignature(sig)} class="signature listitem" classList=${() => sig.selectedClassList}>
             <div class="hdr-rank">${idx + 1}</div>
             <div class="hdr-percent">${sig.percentage.toFixed(1)}%</div>
@@ -98,22 +99,25 @@ export default function Signatures(props: {
               <div class="hdr-count">${sig.pingCount}</div>
             </div>
           </div>
-        `);
-    };
+        `;
 
-    return html`<div>
-        ${header}
-        <div class="listheader">
-            <div class="hdr-rank">rank</div>
-            <div class="hdr-percent">%</div>
-            <div class="hdr-signature">signature</div>
-            <div class="hdr-rightpanel">
-            <div class="hdr-search"></div>
-            <div class="hdr-search"></div>
-            <div class="hdr-clientcount">clients</div>
-            <div class="hdr-count">count</div>
+    return html`<${Layout} column>
+        <${Layout} size="content">
+            ${header}
+            <div class="listheader">
+                <div class="hdr-rank">rank</div>
+                <div class="hdr-percent">%</div>
+                <div class="hdr-signature">signature</div>
+                <div class="hdr-rightpanel">
+                <div class="hdr-search"></div>
+                <div class="hdr-search"></div>
+                <div class="hdr-clientcount">clients</div>
+                <div class="hdr-count">count</div>
+                </div>
             </div>
-        </div>
-        ${signatures}
-    </div>`;
+        <//>
+        <${Layout} fill>
+            <${VList} data=${sortedSignatures}>${renderSignature}<//>
+        <//>
+    <//>`;
 }

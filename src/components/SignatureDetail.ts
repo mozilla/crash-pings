@@ -6,6 +6,8 @@ import { SignatureInfo } from "./Signatures";
 import type { Ping } from "../data/source";
 import { allPings } from "../data/source";
 import { makeSparkline } from "../sparkline";
+import Layout from "./Layout";
+import { VList } from "virtua/solid";
 
 export class PingInfo extends SingleSelectable(Object) {
     ping: Ping;
@@ -36,13 +38,13 @@ export default function SignatureDetail(props: {
         const pingInfos = signature.pings.map(ping => new PingInfo(ping));
         const pingData = allPings();
 
-        const pings = pingInfos.map(info => html`
+        const renderPingInfo = (info: PingInfo) => html`
             <div class="detail-meta listitem" classList="${() => info.selectedClassList}" onClick=${(_: Event) => selectPing(info)}>
               <div class="detail-meta-data-date">${pingData.date.getPingString(info.ping)}</div>
               <div class="detail-meta-data-type">${pingData.type.getPingString(info.ping)}</div>
               <div class="detail-meta-data-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
             </div>
-        `);
+        `;
 
         const crashesPerDate = signature.pings.reduce((map, ping) => {
             const date = pingData.date.values[ping];
@@ -72,17 +74,19 @@ export default function SignatureDetail(props: {
             });
 
         return html`
-            <div>
-                <div>
+            <${Layout} column>
+                <${Layout} size="content">
                     ${sparkline}
                     ${filterCounts}
-                </div>
-                <div class="detail-header">
-                    <div class="detail-meta-data-date">Date</div>
-                    <div class="detail-meta-data-type">Crash Type</div>
-                    <div class="detail-meta-data-reason">Reason</div>
-                </div>
-                ${pings}
+                    <div class="detail-header">
+                        <div class="detail-meta-data-date">Date</div>
+                        <div class="detail-meta-data-type">Crash Type</div>
+                        <div class="detail-meta-data-reason">Reason</div>
+                    </div>
+                <//>
+                <${Layout} fill>
+                    <${VList} data=${pingInfos}>${renderPingInfo}<//>
+                <//>
             </div>
         `;
     };

@@ -9,6 +9,7 @@
         "@netlify/functions": "^3.0.1",
         "normalize.css": "^8.0.1",
         "solid-js": "^1.9.4",
+        "virtua": "^0.40.3",
       },
       "devDependencies": {
         "@types/bun": "^1.1.16",
@@ -46,5 +47,7 @@
     "typescript": ["typescript@5.7.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg=="],
 
     "undici-types": ["undici-types@5.26.5", "", {}, "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="],
+
+    "virtua": ["virtua@0.40.3", "", { "peerDependencies": { "react": ">=16.14.0", "react-dom": ">=16.14.0", "solid-js": ">=1.0", "svelte": ">=5.0", "vue": ">=3.2" }, "optionalPeers": ["react", "react-dom", "solid-js", "svelte", "vue"] }, "sha512-rfl6VohBFoT0U64fVdOGag2p0D+YZbki7HQ5bjFZObStWBaWjjataIHFDjl4KuSr3yHBMgGd/+Va7W4Z2Y0LRg=="],
   }
 }

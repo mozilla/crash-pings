@@ -28,6 +28,7 @@
     "@netlify/blobs": "^8.1.1",
     "@netlify/functions": "^3.0.1",
     "normalize.css": "^8.0.1",
-    "solid-js": "^1.9.4"
+    "solid-js": "^1.9.4",
+    "virtua": "^0.40.3"
   }
 }
