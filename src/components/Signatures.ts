@@ -45,7 +45,7 @@ export default function Signatures(props: {
             const signature = allSignatures.values[ping];
             if (signature !== 0) {
                 if (!map.has(signature)) {
-                    map.set(signature, new SignatureInfo(allSignatures.getString(signature)!));
+                    map.set(signature, new SignatureInfo(allSignatures.strings[signature]));
                 }
                 map.get(signature)!.pings.push(ping);
             }

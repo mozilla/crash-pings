@@ -1,59 +1,102 @@
 export const DATA_VERSION = 1;
 
-export const PING_FIELDS = {
-    channel: "istring",
-    process: "istring",
-    ipc_actor: "istring",
-    clientid: "istring",
-    crashid: "string",
-    version: "istring",
-    os: "istring",
-    osversion: "istring",
-    arch: "istring",
-    date: "istring",
-    reason: "istring",
-    type: "istring",
-    minidump_sha256_hash: "nstring",
-    startup_crash: "boolean",
-    build_id: "istring",
-    signature: "istring",
-} as const;
+// Symbolic ping field types.
+const SIndexedString = Symbol("indexed string");
+const SNullableIndexedString = Symbol("nullable indexed string");
+const SString = Symbol("string");
+const SNullableString = Symbol("nullable string");
+const SNullableBoolean = Symbol("nullable boolean");
 
-export type PingFields = typeof PING_FIELDS;
-export type IStringPingField = keyof {
-    [Key in keyof PingFields as PingFields[Key] extends "istring" ? Key : never]: any;
-};
+/**
+ * Ping field definitions.
+ */
+const PING_FIELDS = Object.freeze({
+    channel: SIndexedString,
+    process: SIndexedString,
+    ipc_actor: SNullableIndexedString,
+    clientid: SIndexedString,
+    crashid: SString,
+    version: SIndexedString,
+    os: SIndexedString,
+    osversion: SIndexedString,
+    arch: SIndexedString,
+    date: SIndexedString,
+    reason: SNullableIndexedString,
+    type: SNullableIndexedString,
+    minidump_sha256_hash: SNullableString,
+    startup_crash: SNullableBoolean,
+    build_id: SIndexedString,
+    signature: SIndexedString,
+});
 
-export function pingFields(): [keyof PingFields, PingFields[keyof PingFields]][] {
-    return Object.entries(PING_FIELDS) as any;
+/**
+ * Basic ping field type and descriptor. We separate nullability for
+ * convenience when validating ping data.
+ */
+export enum PingFieldType {
+    IndexedString,
+    String,
+    Boolean,
 }
 
-export type TypeMap<IString> = {
-    istring: IString,
-    string: string,
-    nstring: string | null,
-    boolean: boolean | null,
+export type PingFieldTypeDescriptor = {
+    readonly type: PingFieldType;
+    readonly nullable?: boolean;
 };
 
-type NoIString = Omit<TypeMap<null>, 'istring'>;
+/**
+ * Mapping of symbolic ping field types to descriptors (which specify the type
+ * and nullability in a more convenient form).
+ */
+const TYPE_DESCRIPTOR = {
+    [SIndexedString]: Object.freeze({ type: PingFieldType.IndexedString }),
+    [SNullableIndexedString]: Object.freeze({ type: PingFieldType.IndexedString, nullable: true }),
+    [SString]: Object.freeze({ type: PingFieldType.String }),
+    [SNullableString]: Object.freeze({ type: PingFieldType.String, nullable: true }),
+    [SNullableBoolean]: Object.freeze({ type: PingFieldType.Boolean, nullable: true }),
+};
+
+export type PingFields = typeof PING_FIELDS;
+
+/** All ping field keys which store PingFieldType.IndexedString. */
+export type IndexedStringPingField = keyof {
+    [Key in keyof PingFields as typeof TYPE_DESCRIPTOR[PingFields[Key]]["type"] extends PingFieldType.IndexedString ? Key : never]: any;
+};
+
+export function pingFields(): [keyof PingFields, PingFieldTypeDescriptor][] {
+    return Object.entries(PING_FIELDS).map(([k, v]) => [k as keyof PingFields, TYPE_DESCRIPTOR[v] as PingFieldTypeDescriptor]);
+}
+
+export function getTypeDescriptor(field: keyof PingFields): PingFieldTypeDescriptor {
+    return TYPE_DESCRIPTOR[PING_FIELDS[field]];
+}
+
+export type TypeMap<IString, NIString> = {
+    [SIndexedString]: IString,
+    [SNullableIndexedString]: NIString,
+    [SString]: string,
+    [SNullableString]: string | null,
+    [SNullableBoolean]: boolean | null,
+};
+
+type NoIString = Omit<TypeMap<never, never>, typeof SIndexedString | typeof SNullableIndexedString>;
 type Arrayify<T> = {
     [K in keyof T]: T[K][];
 };
 
-export type IStringData<Values> = { strings: string[], values: Values };
-
-export interface ArrayTypeMap<IString> extends Arrayify<NoIString> {
-    istring: IString,
-}
+export type IStringData<String, Values> = { strings: String[], values: Values };
 
 export type StringIndex = number;
-export type Pings<IString = IStringData<StringIndex[]>> = {
-    [K in keyof PingFields]: ArrayTypeMap<IString>[PingFields[K]];
+export type Pings<IString = IStringData<string, StringIndex[]>, NIString = IStringData<string | null, StringIndex[]>> = {
+    [K in keyof PingFields]: ({
+        [SIndexedString]: IString,
+        [SNullableIndexedString]: NIString,
+    } & Arrayify<NoIString>)[PingFields[K]];
 };
 
-export function emptyPings<T>(emptyIString: () => T, emptyArray: () => any[] = () => []): Pings<T> {
-    return Object.fromEntries(Object.entries(PING_FIELDS).map(([k, v]) => {
-        if (v === "istring") {
+export function emptyPings<T>(emptyIString: () => T, emptyArray: () => any[] = () => []): Pings<T, T> {
+    return Object.fromEntries(pingFields().map(([k, v]) => {
+        if (v.type === PingFieldType.IndexedString) {
             return [k, emptyIString()];
         } else {
             return [k, emptyArray()];

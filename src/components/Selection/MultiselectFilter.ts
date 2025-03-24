@@ -2,15 +2,12 @@ import { createSignal, createEffect, onMount, untrack } from "solid-js";
 import html from "solid-js/html";
 import type { AllPings, FieldValue, FilterSpec, Ping, FilterField } from "./FilterSpec";
 import type { IString } from "../../data/source";
+import { getTypeDescriptor } from "../../data/format";
 
 export type MultiselectValue = {
     value: FieldValue,
     label: string,
     group?: string,
-};
-
-export const NULL_VALUE: MultiselectValue = {
-    value: 0, label: "(none)"
 };
 
 function arrayCompare(a: number[], b: number[]) {
@@ -22,16 +19,34 @@ function arrayCompare(a: number[], b: number[]) {
     return b.length > a.length ? -1 : 0;
 }
 
-function mildlySmartSort<T>(values: T[], f: (value: T) => string) {
+function mildlySmartSort<T>(values: T[], f: (value: T) => string | null) {
     if (values.length == 0)
         return;
 
-    if (/^[0-9][0-9.@ab]+$/.test(f(values[0]))) {
-        const toParts = (v: string) => v.split(/[.@ab]/).map(i => parseInt(i));
+    const firstNonNull = Iterator.from(values).map(v => f(v)).find(v => v !== null);
+    if (!firstNonNull) {
+        // There must only be one entry, as there should be at most one null result.
+        return;
+    }
+
+    const sortWithNull = (stringSort: (a: string, b: string) => number) => (a: T, b: T): number => {
+        const ap = f(a);
+        const bp = f(b);
+        if (ap === null) {
+            return -1;
+        } else if (bp === null) {
+            return 1;
+        } else {
+            return stringSort(ap, bp);
+        }
+    };
+
+    if (/^[0-9][0-9.@ab]+$/.test(firstNonNull)) {
+        const toParts = (v: string) => v.split(/[.@ab]/).map(i => i ? parseInt(i) : 0);
         // Sort descending, assuming we're interested in the larger values
-        values.sort((a, b) => arrayCompare(toParts(f(a)), toParts(f(b)))).reverse();
+        values.sort(sortWithNull((a, b) => arrayCompare(toParts(a), toParts(b)))).reverse();
     } else {
-        values.sort((a, b) => f(a).localeCompare(f(b)));
+        values.sort(sortWithNull((a, b) => a.localeCompare(b)));
     }
 }
 
@@ -63,12 +78,11 @@ export class MultiselectFilterSpec implements FilterSpec {
     props: {
         field: FilterField,
         prettyName?: string,
-        allowNull?: boolean,
         requires?: Record<string, string>,
         createValue?: (value: FieldValue, label: string) => MultiselectValue,
     };
 
-    pingValues: IString | undefined;
+    pingValues: IString<string | null> | undefined;
 
     selectedValues: (() => Set<FieldValue>);
     #setSelectedValues: (val: Set<FieldValue>) => void;
@@ -159,8 +173,8 @@ export class MultiselectFilterSpec implements FilterSpec {
                     resolvedRequires = undefined;
                     break;
                 }
-                const si = dep.pingValues!.stringIndexOf(value);
-                if (si === 0) {
+                const si = dep.pingValues!.strings.indexOf(value);
+                if (si === -1) {
                     resolvedRequires = undefined;
                     break;
                 }
@@ -189,15 +203,18 @@ export class MultiselectFilterSpec implements FilterSpec {
             for (const ping of this.#limitTo) {
                 valueSubset.add(this.pingValues!.values[ping]);
             }
-            valueSubset.delete(0);
         } else {
-            valueSubset = new Set(this.pingValues!.strings.map(([i, _]) => i));
+            valueSubset = new Set(this.pingValues!.strings.keys());
         }
-        const values = valueSubset.keys().map(i => new MultiselectFilterOption(createValue(i, this.pingValues!.getString(i)!))).toArray();
-        mildlySmartSort(values, v => this.pingValues!.getString(v.value)!);
-        if (props.allowNull) {
-            values.unshift(new MultiselectFilterOption(NULL_VALUE));
-        }
+        const values = valueSubset.keys().map(i => {
+            const s = this.pingValues!.strings[i];
+            if (s === null) {
+                console.assert(getTypeDescriptor(this.props.field).nullable, "expected nullable field", this.props.field);
+                return new MultiselectFilterOption({ value: i, label: "(none)" });
+            }
+            return new MultiselectFilterOption(createValue(i, s))
+        }).toArray();
+        mildlySmartSort(values, v => this.pingValues!.strings[v.value]);
         this.#fieldValueOptions = new Map(values.map(v => [v.value, v]));
 
         let groupToggle;

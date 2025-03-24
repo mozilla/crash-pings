@@ -1,46 +1,65 @@
 import { gzipSync } from "node:zlib";
-import { emptyPings, pingFields, DATA_VERSION } from "app/data/format.ts";
-import type { IStringPingField, PingFields, TypeMap, Pings, StringIndex } from "app/data/format.ts";
+import { emptyPings, pingFields, PingFieldType, DATA_VERSION } from "app/data/format.ts";
+import type { IndexedStringPingField, PingFields, TypeMap, Pings, StringIndex } from "app/data/format.ts";
 import type { Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 
 const EMPTY_RETRY_MS = 1000 * 60 * 15; // 15 minutes, as milliseconds
 
 type Ping = {
-	[K in keyof PingFields]: TypeMap<string>[PingFields[K]];
+	[K in keyof PingFields]: TypeMap<string, string | null>[PingFields[K]];
 };
 
-type StringLookup = Map<string, number>;
+type StringLookup = Map<string | null, number>;
 
 function condenseData(data: Ping[]): Pings {
-	const fieldStringLookup = new Map<IStringPingField, StringLookup>();
+	const fieldStringLookup = new Map<IndexedStringPingField, StringLookup>();
 	const output: Pings = emptyPings(() => { return { strings: [], values: [] } });
 
-	function getstr(field: IStringPingField, s: string | null): StringIndex {
-		if (s === null) return 0;
-
+	function getstr(field: IndexedStringPingField, s: string | null): StringIndex {
 		if (!fieldStringLookup.has(field)) {
-			fieldStringLookup.set(field, new Map<string, number>());
+			fieldStringLookup.set(field, new Map<string | null, number>());
 		}
 		const stringLookup = fieldStringLookup.get(field)!;
 
 		if (!stringLookup.has(s)) {
-			output[field].strings.push(s);
 			stringLookup.set(s, output[field].strings.length);
+			// We've verified that non-null fields will have only non-null
+			// values (otherwise the ping is dropped), so we can safely push
+			// the value if null or not.
+			output[field].strings.push(s as any);
 		}
 		return stringLookup.get(s)!;
 	}
 
-	for (const ping of data) {
-		for (const [k, type] of pingFields()) {
+	let badData = 0;
+
+	pingLoop: for (const ping of data) {
+		// First pass checks whether we should store the ping at all. These
+		// fields should never be null (based on the query), but we want to
+		// check to uphold the invariants of the produced data.
+		for (const [k, desc] of pingFields()) {
+			if (!desc.nullable && ping[k] === null) {
+				console.warn(`Unexpected null in ${k}, omitting ping`);
+				badData++;
+				continue pingLoop;
+			}
+		}
+
+		for (const [k, desc] of pingFields()) {
 			const inValue = ping[k];
-			if (type === "istring") {
-				const kfield = k as IStringPingField;
-				output[kfield].values.push(getstr(kfield, inValue as string));
+
+			if (desc.type === PingFieldType.IndexedString) {
+				const kfield = k as IndexedStringPingField;
+				output[kfield].values.push(getstr(kfield, inValue as string | null));
 			} else {
 				(output[k] as any[]).push(inValue);
 			}
 		}
+	}
+
+	if (badData > 0) {
+		console.warn(`Unexpected data in ${badData} pings`);
 	}
 
 	return output;

@@ -1,65 +1,51 @@
-import { emptyPings, pingFields } from "./format";
-import type { Pings, StringIndex, IStringData, IStringPingField } from "./format";
+import { emptyPings, pingFields, PingFieldType } from "./format";
+import type { Pings, StringIndex, IStringData, IndexedStringPingField } from "./format";
 import { createResource, createSignal } from "solid-js";
 
 export type IndexArray = Uint8Array | Uint16Array | Uint32Array;
 
-export class IString {
-    readonly #strings: string[];
+export class IString<S> {
+    readonly strings: S[];
     readonly values: IndexArray;
 
-    constructor(strings: string[], values: IndexArray) {
-        this.#strings = strings;
+    constructor(strings: S[], values: IndexArray) {
+        this.strings = strings;
         this.values = values;
     }
 
-    get strings(): IteratorObject<[StringIndex, string]> {
-        return Iterator.from(this.#strings).map((s, i) => [i + 1, s]);
-    }
-
-    stringIndexOf(s: string): StringIndex {
-        return this.#strings.indexOf(s) + 1;
-    }
-
-    getString(index: StringIndex): string | null {
-        return index === 0 ? null : this.#strings[index - 1];
-    }
-
-    getPingString(ping: Ping): string | null {
-        return this.getString(this.values[ping]);
+    getPingString(ping: Ping): S {
+        return this.strings[this.values[ping]];
     }
 };
 
-class IStringBuilder {
-    #stringIndex = new Map<string, StringIndex>();
-    #strings: string[] = [];
+class IStringBuilder<S> {
+    #stringIndex = new Map<S, StringIndex>();
+    #strings: S[] = [];
     #values: Uint32Array;
 
     constructor(totalPings: number) {
         this.#values = new Uint32Array(totalPings);
     }
 
-    addData(offset: number, istringData: IStringData<StringIndex[]>) {
-        const indexMapping: StringIndex[] = new Array(istringData.strings.length + 1);
-        // Map null to null
-        indexMapping[0] = 0;
-        let iMappingInd = 1;
+    addData(offset: number, istringData: IStringData<S, StringIndex[]>) {
+        const indexMapping: StringIndex[] = new Array(istringData.strings.length);
+        let iMappingInd = 0;
         for (const s of istringData.strings) {
             const existing = this.#stringIndex.get(s);
             let mappedValue;
             if (existing !== undefined) {
                 mappedValue = existing;
             } else {
-                this.#strings.push(s);
                 this.#stringIndex.set(s, this.#strings.length);
                 mappedValue = this.#strings.length;
+                this.#strings.push(s);
             }
             indexMapping[iMappingInd++] = mappedValue;
         }
         this.#values.set(istringData.values.map(v => indexMapping[v]), offset);
     }
 
-    build(): IString {
+    build(): IString<S> {
         let values: IndexArray;
         if (this.#strings.length < 256) {
             values = new Uint8Array(this.#values);
@@ -72,7 +58,7 @@ class IStringBuilder {
     }
 }
 
-export type AllPings = Pings<IString>;
+export type AllPings = Pings<IString<string>, IString<string | null>>;
 
 /** An index into `AllPings` data. */
 export type Ping = number;
@@ -88,16 +74,17 @@ const [sources, setSources] = createSignal<string[]>([]);
 function joinData(allData: Pings[]): AllPings {
     const totalPings = allData.reduce((sum, d) => sum + d.crashid.length, 0);
 
-    const pings = emptyPings(() => new IStringBuilder(totalPings), () => new Array(totalPings));
+    const pings = emptyPings(() => new IStringBuilder(totalPings), () => new Array(totalPings)) as
+        Pings<IStringBuilder<string>, IStringBuilder<string | null>>;
 
     let offset = 0;
     for (const data of allData) {
         // Populate the return data.
-        for (const [field, type] of pingFields()) {
+        for (const [field, desc] of pingFields()) {
             // Change indices as necessary.
-            if (type === "istring") {
-                const f = field as IStringPingField;
-                pings[f].addData(offset, data[f]);
+            if (desc.type === PingFieldType.IndexedString) {
+                const f = field as IndexedStringPingField;
+                pings[f].addData(offset, data[f] as any);
             } else {
                 const src = data[field] as any[];
                 const dest = pings[field] as any[];
@@ -110,8 +97,8 @@ function joinData(allData: Pings[]): AllPings {
     }
 
     // Build the IStringBuilders
-    for (const [field, _] of pingFields().filter(([_, t]) => t === "istring")) {
-        const f = field as IStringPingField;
+    for (const [field, _] of pingFields().filter(([_, d]) => d.type === PingFieldType.IndexedString)) {
+        const f = field as IndexedStringPingField;
         (pings as any)[f] = pings[f].build();
     }
     return pings as any;

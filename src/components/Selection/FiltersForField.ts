@@ -14,7 +14,7 @@ class FiltersForFieldSpec implements FilterSpec {
     build(pings: AllPings) {
         const field = pings[this.field];
 
-        const values = field.strings.map(([_, s]) => {
+        const values = Iterator.from(field.strings).filter(s => s !== null).map(s => {
             const filters = this.gen(s).build(pings);
             return [s, filters] as [string, MultiselectFilterSpec[]];
         }).toArray();

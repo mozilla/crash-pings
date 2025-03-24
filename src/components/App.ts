@@ -96,7 +96,7 @@ export default function App() {
                         <${MultiselectFilter} field="channel" />
                         <${MultiselectFilter} field="process" />
                         <${MultiselectFilter} field="ipc_actor" prettyName="utility ipc actor"
-                            requires=${{ "process": "utility" }} allowNull=true />
+                            requires=${{ "process": "utility" }} />
                         <${MultiselectFilter} field="version" />
                         <${MultiselectFilter} field="os" />
                         <${FiltersForField} field="os">${osVersionFilter}<//>

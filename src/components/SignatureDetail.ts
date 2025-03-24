@@ -50,11 +50,8 @@ export default function SignatureDetail(props: {
             return map;
         }, new Map<number, number>());
 
-        // There shouldn't be any null dates, but just to ensure we get a
-        // non-null date string, remove the 0 entry.
-        crashesPerDate.delete(0);
         const sparklineData = crashesPerDate.entries()
-            .map(([date, value]) => { return { date: pingData.date.getString(date)!, value }; })
+            .map(([date, value]) => { return { date: pingData.date.strings[date], value }; })
             .toArray()
             .sort((a, b) => a.date.localeCompare(b.date));
 
