@@ -1,6 +1,6 @@
 import { emptyPings, pingFields, PingFieldType } from "./format";
 import type { Pings, StringIndex, IStringData, IndexedStringPingField } from "./format";
-import { createResource, createSignal } from "solid-js";
+import { createResource, createRoot, createSignal } from "solid-js";
 
 export type IndexArray = Uint8Array | Uint16Array | Uint32Array;
 
@@ -63,22 +63,24 @@ export type AllPings = Pings<IString<string>, IString<string | null>>;
 /** An index into `AllPings` data. */
 export type Ping = number;
 
-const [sources, setSources] = createSignal<string[]>([]);
-
 // We can make equality checks and set operations very fast by deduping strings
 // and keeping indexed strings as-is.
 //
 // If we didn't care much about the set operations we could also evaluate the
 // string indices since at this point it will be efficient in memory either
 // way, but the volume of data necessitates higher performance filtering.
-function joinData(allData: Pings[]): AllPings {
-    const totalPings = allData.reduce((sum, d) => sum + d.crashid.length, 0);
+async function joinData(allData: [UrlSource, Pings][]): Promise<AllPings> {
+    const totalPings = allData.reduce((sum, d) => sum + d[1].crashid.length, 0);
 
     const pings = emptyPings(() => new IStringBuilder(totalPings), () => new Array(totalPings)) as
         Pings<IStringBuilder<string>, IStringBuilder<string | null>>;
 
     let offset = 0;
-    for (const data of allData) {
+    for (const [source, data] of allData) {
+        source.setStatus({ message: "merging" });
+
+        await new Promise(resolve => setTimeout(resolve, 0));
+
         // Populate the return data.
         for (const [field, desc] of pingFields()) {
             // Change indices as necessary.
@@ -94,7 +96,10 @@ function joinData(allData: Pings[]): AllPings {
             }
         }
         offset += data.crashid.length;
+
+        source.setStatus({ success: true, message: `loaded ${data.crashid.length} pings` });
     }
+    await new Promise(resolve => setTimeout(resolve, 0));
 
     // Build the IStringBuilders
     for (const [field, _] of pingFields().filter(([_, d]) => d.type === PingFieldType.IndexedString)) {
@@ -104,22 +109,72 @@ function joinData(allData: Pings[]): AllPings {
     return pings as any;
 }
 
-// Retry fetches as long as 202 status is returned.
-const RETRY_TIME_MS = 2000;
-async function fetchRetryOn202(url: string): Promise<Response> {
-    let response = await fetch(url);
-    while (response.status === 202) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_TIME_MS));
-        response = await fetch(url);
+export type SourceStatus = {
+    success?: boolean,
+    message: string;
+};
+
+export interface Source {
+    readonly date: string;
+    status(): SourceStatus;
+}
+
+class UrlSource implements Source {
+    readonly date: string;
+    readonly url: string;
+    readonly status: () => SourceStatus;
+    readonly setStatus: (status: SourceStatus) => void;
+
+    constructor(date: string) {
+        this.date = date;
+        this.url = `ping_data/${date}`;
+        const [status, setStatus] = createSignal<SourceStatus>({ message: "requesting" });
+        this.status = status;
+        this.setStatus = setStatus;
     }
-    return response;
 }
 
-async function fetchSources(sources: string[]): Promise<AllPings> {
-    const allData: Pings[] = await Promise.all(sources.map(s => fetchRetryOn202(s).then(r => r.json())));
-    return joinData(allData);
+const RETRY_TIME_MS = 2000;
+async function fetchSource(source: UrlSource): Promise<[Source, Pings | undefined]> {
+    try {
+        let response = await fetch(source.url);
+        // Retry fetches as long as 202 status is returned.
+        while (response.status === 202) {
+            source.setStatus({ message: "querying database" });
+            await new Promise(resolve => setTimeout(resolve, RETRY_TIME_MS));
+            response = await fetch(source.url);
+        }
+        source.setStatus({ message: "downloading" });
+        const data: Pings = await response.json();
+        if (data.crashid.length === 0) {
+            source.setStatus({ success: false, message: "not available" });
+            return [source, undefined];
+        }
+        source.setStatus({ message: "downloaded" });
+        return [source, data];
+    } catch (error) {
+        source.setStatus({ success: false, message: `failed: ${error}` });
+        return [source, undefined];
+    }
 }
 
-const [allPings] = createResource(sources, fetchSources, { initialValue: emptyPings(() => new IString([], new Uint8Array())) });
+async function fetchSources(sources: UrlSource[]): Promise<AllPings> {
+    const allData = await Promise.all(sources.map(fetchSource));
+    return await joinData(allData.filter(([_, p]) => p !== undefined) as [UrlSource, Pings][]);
+}
 
-export { setSources, allPings };
+const { urlSources, setSources, allPings } = createRoot(() => {
+    const [sources, setSources] = createSignal<UrlSource[]>([]);
+    const [allPings] = createResource(sources, fetchSources, { initialValue: emptyPings(() => new IString([], new Uint8Array())) });
+    return { urlSources: sources, setSources, allPings };
+});
+
+export function setDates(dates: string[]) {
+    setSources(dates.map(d => new UrlSource(d)));
+}
+
+export function sources(): Source[] {
+    return urlSources();
+}
+
+export { allPings };

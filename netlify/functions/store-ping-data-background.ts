@@ -103,7 +103,7 @@ async function fetchRedash(method: string, apiEndpoint: string, parameters?: { d
 		},
 	};
 	if (method === "POST") {
-		request.body = JSON.stringify({ parameters });
+		request.body = JSON.stringify({ parameters, max_age: 0 });
 	}
 	const response = await fetch(`${REDASH_URL}/api/${apiEndpoint}`, request);
 	if (response.status >= 400) {

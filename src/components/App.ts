@@ -6,8 +6,9 @@ import type { FilterInfo } from "./Selection";
 import Signatures, { SignatureInfo } from "./Signatures";
 import SignatureDetail, { PingInfo } from "./SignatureDetail";
 import PingDetail from "./PingDetail";
-import { allPings, setSources } from "../data/source";
+import { allPings, setDates } from "../data/source";
 import Layout from "./Layout";
+import SourceStatus from "./SourceStatus";
 
 function osVersionName(os: string): ((version: string) => string | undefined) | undefined {
     function windows_nt_10_label(version: string): string {
@@ -81,7 +82,12 @@ export default function App() {
     const [filterInfo, setFilterInfo] = createSignal<FilterInfo>();
     const [selectedPing, setSelectedPing] = createSignal<PingInfo>();
 
-    const setDates = (dates: string[]) => setSources(dates.map(date => `ping_data/${date}`));
+    const loading = () => html`
+        <div style=${{ width: "50ch" }}>
+            <h2>Loading...</h2>
+            <${SourceStatus} />
+        </div>
+    `;
 
     return html`
     <${Layout} column>
@@ -89,7 +95,7 @@ export default function App() {
             <header>Crash Pings</header>
             <${DateFilter} dates=${setDates} />
         <//>
-        <${Suspense} fallback=${html`<p>Loading data...</p>`}>
+        <${Suspense} fallback=${loading}>
             <${Layout} row>
                 <${Layout} size="14em">
                     <${Selection} pings=${allPings} selectedPings=${setSelectedPings} filterInfo=${setFilterInfo}>
