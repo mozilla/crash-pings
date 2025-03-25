@@ -1,4 +1,5 @@
 import html from "solid-js/html";
+import { createSignal, untrack, Show } from "solid-js";
 
 function dateString(date: Date): string {
     const s = date.toISOString();
@@ -12,12 +13,17 @@ export default function DateFilter(props: {
 }) {
     const now = Date.now();
     const now_day = Math.floor(now / DAY_MILLIS);
-    let startDate = new Date((now_day - 7) * DAY_MILLIS);
-    let endDate = new Date((now_day - 1) * DAY_MILLIS);
+    let currentStartDate = new Date((now_day - 7) * DAY_MILLIS);
+    let currentEndDate = new Date((now_day - 1) * DAY_MILLIS);
+    const [startDate, setStartDate] = createSignal(currentStartDate);
+    const [endDate, setEndDate] = createSignal(currentEndDate);
+
     const updateDates = () => {
         const dates = [];
-        let d = startDate;
-        while (d <= endDate) {
+        const start = currentStartDate = untrack(startDate);
+        const end = currentEndDate = untrack(endDate);
+        let d = start;
+        while (d <= end) {
             dates.push(dateString(d));
             d = new Date(d.getTime() + DAY_MILLIS);
         }
@@ -27,17 +33,35 @@ export default function DateFilter(props: {
     // Set initial dates. No reason to wait for mount.
     updateDates();
 
-    return html`<div>
-        <label for="start-date">Start:</label>
-        <input type="date" name="start-date"
-            onChange=${(e: Event) => startDate = (e.currentTarget! as HTMLInputElement).valueAsDate!}
-            value=${dateString(startDate)}
+    const showLoadButton = () => {
+        return startDate().getTime() !== currentStartDate.getTime()
+            || endDate().getTime() !== currentEndDate.getTime();
+    };
+
+    const startChanged = (e: Event) => {
+        const date = (e.currentTarget! as HTMLInputElement).valueAsDate!;
+        setStartDate(date);
+        if (date > endDate()) setEndDate(date);
+    };
+    const endChanged = (e: Event) => {
+        const date = (e.currentTarget! as HTMLInputElement).valueAsDate!;
+        setEndDate(date);
+        if (date < startDate()) setStartDate(date);
+    };
+
+    return html`<fieldset style=${{ border: 0, padding: 0, display: "flex", "flex-direction": "row", "align-items": "baseline", gap: "1ch" }}>
+        <legend style=${{ "font-size": "0.8em" }}>Submission Timestamp</legend>
+        <input type="date"
+            onChange=${startChanged}
+            value=${() => dateString(startDate())}
             >
-        <label for="end-date">End:</label>
-        <input type="date" name="end-date"
-            onChange=${(e: Event) => endDate = (e.currentTarget! as HTMLInputElement).valueAsDate!}
-            value=${dateString(endDate)}
+        <span>to</span>
+        <input type="date"
+            onChange=${endChanged}
+            value=${() => dateString(endDate())}
             >
-        <button onClick=${(_: Event) => updateDates()}>Load</button>
-    </div>`;
+        <${Show} when=${showLoadButton}>
+            <button onClick=${(_: Event) => updateDates()}>Load</button>
+        <//>
+    </fieldset>`;
 }
