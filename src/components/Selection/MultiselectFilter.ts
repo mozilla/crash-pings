@@ -249,7 +249,7 @@ export class MultiselectFilterSpec implements FilterSpec {
 
         const options = () => {
             let opts = this.#grouped() ? groupedOptions!.keys().map(k => { return { label: k, value: k } }).toArray() : values;
-            return opts.map(v => html`<option class="filter-option" value=${v.value} selected>${v.label}</option>`);
+            return opts.map(v => html`<option value=${v.value} selected>${v.label}</option>`);
         };
 
         let selectEl: HTMLSelectElement;
@@ -281,15 +281,17 @@ export class MultiselectFilterSpec implements FilterSpec {
         const changed = (_: Event) => setSelectedOptions(Array.from(selectEl.selectedOptions));
         onMount(() => selectEl.dispatchEvent(new Event('change')));
 
+        const fieldid = () => `filter-${prettyName().replace(" ", "-")}`;
+
         return html`<div class="filter">
-            <label onClick=${(_: Event) => selectAll()} for=${field} title="Click to select all" style="cursor:pointer">
+            <label onClick=${(_: Event) => selectAll()} for=${fieldid} title="Click to select all" style="cursor:pointer">
                 ${prettyName}
                 ${groupToggle}
             </label>
             <select
                 ref=${(el: HTMLSelectElement) => selectEl = el}
                 onChange=${changed} 
-                name="${field}"
+                id=${fieldid}
                 disabled=${this.#disabled}
                 multiple
                 size="4"

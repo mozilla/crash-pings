@@ -39,10 +39,10 @@ export default function SignatureDetail(props: {
         const pingData = allPings();
 
         const renderPingInfo = (info: PingInfo) => html`
-            <div class="detail-meta listitem" classList="${() => info.selectedClassList}" onClick=${(_: Event) => selectPing(info)}>
-              <div class="detail-meta-data-date">${pingData.date.getPingString(info.ping)}</div>
-              <div class="detail-meta-data-type">${pingData.type.getPingString(info.ping)}</div>
-              <div class="detail-meta-data-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
+            <div class="listrow" classList="${() => info.selectedClassList}" onClick=${(_: Event) => selectPing(info)}>
+              <div class="ping-date">${pingData.date.getPingString(info.ping)}</div>
+              <div class="ping-type">${pingData.type.getPingString(info.ping)}</div>
+              <div class="ping-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
             </div>
         `;
 
@@ -78,10 +78,10 @@ export default function SignatureDetail(props: {
                 <${Layout} size="content">
                     ${sparkline}
                     ${filterCounts}
-                    <div class="detail-header">
-                        <div class="detail-meta-data-date">Date</div>
-                        <div class="detail-meta-data-type">Crash Type</div>
-                        <div class="detail-meta-data-reason">Reason</div>
+                    <div class="listrow listheader">
+                        <div class="ping-date">Date</div>
+                        <div class="ping-type">Crash Type</div>
+                        <div class="ping-reason">Reason</div>
                     </div>
                 <//>
                 <${Layout} fill>

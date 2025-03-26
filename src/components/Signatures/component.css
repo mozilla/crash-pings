@@ -1,0 +1,67 @@
+.listheader {
+	font-weight: bold;
+}
+
+.listrow {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	gap: 1ch;
+	padding: 0.5lh 1ch;
+	border-radius: 4px;
+}
+
+.listrow.selected {
+	background: lightblue;
+}
+
+.listrow > div {
+	flex: 0 0 auto;
+}
+
+.listrow > .rank {
+	width: 6ch;
+	text-align: right;
+}
+.listrow > .percent {
+	width: 6ch;
+	text-align: right;
+}
+.listrow > .signature {
+	flex: 1 1 auto;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+}
+.listrow > .copy {
+	width: 2ch;
+	text-align: center;
+}
+.listrow > .search {
+	width: 2ch;
+	text-align: center;
+}
+.listrow > .clients {
+	width: 7ch;
+	text-align: right;
+}
+.listrow > .count {
+	width: 7ch;
+	text-align: right;
+}
+
+.listrow > .ping-date {
+	width: 10ch;
+}
+.listrow > .ping-type {
+	width: 40ch;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+}
+.listrow > .ping-reason {
+	flex: 1 1 auto;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+}

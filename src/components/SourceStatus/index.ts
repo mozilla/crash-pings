@@ -29,7 +29,7 @@ function renderSource(source: Source) {
 }
 
 export default function SourceStatus(_props: {}) {
-    return html`<${Layout} column gap>
+    return html`<${Layout} column>
         <${For} each=${sources}>${renderSource}<//>
     <//>`;
 }

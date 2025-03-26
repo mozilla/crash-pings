@@ -3,7 +3,8 @@ import html from "solid-js/html";
 import type FilterSpec from "./FilterSpec";
 import FiltersForField from "./FiltersForField";
 import MultiselectFilter from "./MultiselectFilter";
-import type { AllPings, Ping } from "../../data/source";
+import type { AllPings, Ping } from "app/data/source";
+import Layout from "app/components/Layout";
 import "./component.css";
 
 export { FiltersForField, MultiselectFilter };
@@ -55,5 +56,5 @@ export default function Selection(props: {
         }
     });
 
-    return html`<div id="filters">${components}</div>`;
+    return html`<${Layout} column>${components}</div>`;
 };

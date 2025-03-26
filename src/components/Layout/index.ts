@@ -7,11 +7,12 @@ function getMarker(value: Marker | undefined): boolean;
 function getMarker<T>(value: T | Marker | undefined): T | boolean;
 function getMarker<T>(value: T | Marker | undefined, defaultPresent: T): T | undefined;
 function getMarker<T>(value: T | Marker | undefined, defaultPresent?: T): any {
-    if (value === undefined) {
-        return defaultPresent !== undefined ? undefined : false;
-    }
-    if (value === "") {
-        return defaultPresent !== undefined ? defaultPresent : true;
+    if (defaultPresent !== undefined) {
+        if (value === undefined || value === false) return undefined;
+        if (value === "" || value === true) return defaultPresent;
+    } else {
+        if (value === undefined) return false;
+        if (value === "") return true;
     }
     return value;
 }
@@ -21,7 +22,7 @@ export default function Layout(props: {
     row?: Marker,
     size?: string,
     fill?: number | Marker,
-    gap?: number | Marker,
+    gap?: number | false,
     children: any,
 }) {
     const classes = () => {
@@ -43,8 +44,8 @@ export default function Layout(props: {
             ret["flex-grow"] = (fill === true ? 1 : fill).toString();
             ret["flex-shrink"] = "1";
         }
-        const gap = getMarker(props.gap, 8);
-        if (gap !== undefined) {
+        if (props.gap !== undefined) {
+            const gap = props.gap === false ? 0 : props.gap;
             ret["gap"] = `${gap}px`;
         }
         return ret;
