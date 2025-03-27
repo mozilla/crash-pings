@@ -9,7 +9,7 @@ NODE_ENV = "production"
 NODE_ENV = "development"
 
 [dev]
-command = "bun run dev"
+command = "bun run bun/serve.ts"
 port = 8888
 targetPort = 3000
 framework = "#custom"
