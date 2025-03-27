@@ -178,14 +178,14 @@ class UrlSource implements Source {
 }
 
 const RETRY_TIME_MS = 2000;
-async function fetchSource(source: UrlSource): Promise<[Source, Pings | undefined]> {
+async function fetchSource(source: UrlSource, signal: AbortSignal): Promise<[Source, Pings | undefined]> {
     try {
-        let response = await fetch(source.url);
+        let response = await fetch(source.url, { signal });
         // Retry fetches as long as 202 status is returned.
         while (response.status === 202) {
             source.setStatus({ message: "querying database" });
             await new Promise(resolve => setTimeout(resolve, RETRY_TIME_MS));
-            response = await fetch(source.url);
+            response = await fetch(source.url, { signal });
         }
         source.setStatus({ message: "downloading" });
         const data: Pings = await response.json();
@@ -201,8 +201,11 @@ async function fetchSource(source: UrlSource): Promise<[Source, Pings | undefine
     }
 }
 
+let abortController: AbortController | undefined;
 async function fetchSources(sources: UrlSource[]): Promise<AllPings> {
-    const allData = await Promise.all(sources.map(fetchSource));
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+    const allData = await Promise.all(sources.map(s => fetchSource(s, abortController!.signal)));
     return await joinData(allData.filter(([_, p]) => p !== undefined) as [UrlSource, Pings][]);
 }
 
