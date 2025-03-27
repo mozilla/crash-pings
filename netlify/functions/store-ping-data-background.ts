@@ -160,7 +160,10 @@ export default async (req: Request, _context: Context) => {
 	// unnecessary) background functions for a particular date.
 	await requestStore.set(date, currentDate.toISOString());
 
-	const pings: Ping[] = await fetchData(date);
+	const pings: Ping[] = await fetchData(date).catch(e => {
+		console.error(e);
+		return [];
+	});
 
 	const metadata = {
 		date: currentDate.toISOString(),
