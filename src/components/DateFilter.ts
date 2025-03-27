@@ -13,15 +13,18 @@ export default function DateFilter(props: {
 }) {
     const now = Date.now();
     const now_day = Math.floor(now / DAY_MILLIS);
-    let currentStartDate = new Date((now_day - 7) * DAY_MILLIS);
-    let currentEndDate = new Date((now_day - 1) * DAY_MILLIS);
-    const [startDate, setStartDate] = createSignal(currentStartDate);
-    const [endDate, setEndDate] = createSignal(currentEndDate);
+    const [currentDates, setCurrentDates] = createSignal({
+        start: new Date((now_day - 7) * DAY_MILLIS),
+        end: new Date((now_day - 1) * DAY_MILLIS),
+    });
+    const [startDate, setStartDate] = createSignal(currentDates().start);
+    const [endDate, setEndDate] = createSignal(currentDates().end);
 
     const updateDates = () => {
         const dates = [];
-        const start = currentStartDate = untrack(startDate);
-        const end = currentEndDate = untrack(endDate);
+        const start = untrack(startDate);
+        const end = untrack(endDate);
+        setCurrentDates({ start, end });
         let d = start;
         while (d <= end) {
             dates.push(dateString(d));
@@ -34,8 +37,9 @@ export default function DateFilter(props: {
     updateDates();
 
     const showLoadButton = () => {
-        return startDate().getTime() !== currentStartDate.getTime()
-            || endDate().getTime() !== currentEndDate.getTime();
+        const current = currentDates();
+        return startDate().getTime() !== current.start.getTime()
+            || endDate().getTime() !== current.end.getTime();
     };
 
     const startChanged = (e: Event) => {
@@ -50,7 +54,7 @@ export default function DateFilter(props: {
     };
 
     return html`<fieldset style=${{ border: 0, padding: 0, display: "flex", "flex-direction": "row", "align-items": "baseline", gap: "1ch" }}>
-        <legend style=${{ "font-size": "0.8em" }}>Submission Timestamp</legend>
+        <legend style=${{ "font-size": "0.8em" }}>Submission Date</legend>
         <input type="date"
             onChange=${startChanged}
             value=${() => dateString(startDate())}
