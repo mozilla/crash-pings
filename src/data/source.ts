@@ -4,6 +4,28 @@ import { createResource, createRoot, createSignal } from "solid-js";
 
 export type IndexArray = Uint8Array | Uint16Array | Uint32Array;
 
+enum SizeHint {
+    Uint8,
+    Uint16,
+    Uint32
+}
+
+const SIZE_HINTS: Record<IndexedStringPingField, SizeHint> = {
+    channel: SizeHint.Uint8,
+    process: SizeHint.Uint8,
+    ipc_actor: SizeHint.Uint8,
+    clientid: SizeHint.Uint32,
+    version: SizeHint.Uint8,
+    os: SizeHint.Uint8,
+    osversion: SizeHint.Uint8,
+    arch: SizeHint.Uint8,
+    date: SizeHint.Uint16,
+    reason: SizeHint.Uint16,
+    type: SizeHint.Uint8,
+    build_id: SizeHint.Uint8,
+    signature: SizeHint.Uint16
+};
+
 export class IString<S> {
     readonly strings: S[];
     readonly values: IndexArray;
@@ -21,10 +43,29 @@ export class IString<S> {
 class IStringBuilder<S> {
     #stringIndex = new Map<S, StringIndex>();
     #strings: S[] = [];
-    #values: Uint32Array;
+    #values: IndexArray;
+    #sizeLimit: number;
 
-    constructor(totalPings: number) {
-        this.#values = new Uint32Array(totalPings);
+    /** 
+     * Providing a size hint allows more efficient memory usage and avoids
+     * copying the data if the size is wrong or if we were to wait until size
+     * information is known after loading everything (e.g., when the `build()`
+     * method is called).
+     */
+    constructor(totalPings: number, hint: SizeHint = SizeHint.Uint32) {
+        switch (hint) {
+            case SizeHint.Uint8:
+                this.#values = new Uint8Array(totalPings);
+                break;
+            case SizeHint.Uint16:
+                this.#values = new Uint16Array(totalPings);
+                break;
+            case SizeHint.Uint32:
+                this.#values = new Uint32Array(totalPings);
+                break;
+        }
+
+        this.#sizeLimit = Math.pow(256, this.#values.BYTES_PER_ELEMENT);
     }
 
     addData(offset: number, istringData: IStringData<S, StringIndex[]>) {
@@ -36,6 +77,14 @@ class IStringBuilder<S> {
             if (existing !== undefined) {
                 mappedValue = existing;
             } else {
+                if (this.#strings.length === this.#sizeLimit) {
+                    if (this.#values.BYTES_PER_ELEMENT === 1) {
+                        this.#values = new Uint16Array(this.#values);
+                    } else {
+                        this.#values = new Uint32Array(this.#values);
+                    }
+                    this.#sizeLimit = Math.pow(256, this.#values.BYTES_PER_ELEMENT);
+                }
                 this.#stringIndex.set(s, this.#strings.length);
                 mappedValue = this.#strings.length;
                 this.#strings.push(s);
@@ -46,15 +95,7 @@ class IStringBuilder<S> {
     }
 
     build(): IString<S> {
-        let values: IndexArray;
-        if (this.#strings.length < 256) {
-            values = new Uint8Array(this.#values);
-        } else if (this.#strings.length < 65536) {
-            values = new Uint16Array(this.#values);
-        } else {
-            values = this.#values;
-        }
-        return new IString(this.#strings, values);
+        return new IString(this.#strings, this.#values);
     }
 }
 
@@ -72,8 +113,10 @@ export type Ping = number;
 async function joinData(allData: [UrlSource, Pings][]): Promise<AllPings> {
     const totalPings = allData.reduce((sum, d) => sum + d[1].crashid.length, 0);
 
-    const pings = emptyPings(() => new IStringBuilder(totalPings), () => new Array(totalPings)) as
-        Pings<IStringBuilder<string>, IStringBuilder<string | null>>;
+    const pings = emptyPings(
+        k => new IStringBuilder(totalPings, SIZE_HINTS[k]),
+        () => new Array(totalPings),
+    ) as Pings<IStringBuilder<string>, IStringBuilder<string | null>>;
 
     let offset = 0;
     for (const [source, data] of allData) {

@@ -94,12 +94,12 @@ export type Pings<IString = IStringData<string, StringIndex[]>, NIString = IStri
     } & Arrayify<NoIString>)[PingFields[K]];
 };
 
-export function emptyPings<T>(emptyIString: () => T, emptyArray: () => any[] = () => []): Pings<T, T> {
+export function emptyPings<T>(emptyIString: (key: IndexedStringPingField) => T, emptyArray: (key: keyof PingFields) => any[] = () => []): Pings<T, T> {
     return Object.fromEntries(pingFields().map(([k, v]) => {
         if (v.type === PingFieldType.IndexedString) {
-            return [k, emptyIString()];
+            return [k, emptyIString(k as IndexedStringPingField)];
         } else {
-            return [k, emptyArray()];
+            return [k, emptyArray(k)];
         }
     })) as any;
 }
