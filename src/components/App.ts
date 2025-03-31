@@ -1,10 +1,11 @@
-import { createSignal, Suspense } from "solid-js";
+import { createSignal, Suspense, Show } from "solid-js";
 import html from "solid-js/html";
 import DateFilter from "./DateFilter";
 import Selection, { FiltersForField, MultiselectFilter } from "./Selection";
 import type { FilterInfo } from "./Selection";
 import Signatures, { SignatureInfo } from "./Signatures";
-import SignatureDetail, { PingInfo } from "./SignatureDetail";
+import SignatureDetail from "./SignatureDetail";
+import Pings, { PingInfo } from "./Pings";
 import PingDetail from "./PingDetail";
 import { allPings, setDates } from "../data/source";
 import Layout from "./Layout";
@@ -109,15 +110,26 @@ export default function App() {
                         <${MultiselectFilter} field="arch" />
                     <//>
                 <//>
-                <${Layout}>
-                    <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature}><//>
+                <${Layout} column>
+                    <${Layout} frame>
+                        <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature}><//>
+                    <//>
+                    <${Show} when=${selectedSignature}>
+                        <${Layout} frame size="content">
+                            <${SignatureDetail} signature=${selectedSignature} filterInfo=${filterInfo}><//>
+                        <//>
+                    <//>
                 <//>
                 <${Layout} column>
-                    <${Layout}>
-                        <${SignatureDetail} signature=${selectedSignature} filterInfo=${filterInfo} selectedPing=${setSelectedPing}><//>
-                    <//>
-                    <${Layout}>
-                        <${PingDetail} ping=${selectedPing}><//>
+                    <${Show} when=${selectedSignature}>
+                        <${Layout} frame>
+                            <${Pings} signature=${selectedSignature} selectedPing=${setSelectedPing}><//>
+                        <//>
+                        <${Show} when=${selectedPing}>
+                            <${Layout} frame>
+                                <${PingDetail} ping=${selectedPing}><//>
+                            <//>
+                        <//>
                     <//>
                 <//>
             <//>

@@ -2,6 +2,7 @@ div.layout {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
+	box-sizing: border-box;
 }
 
 div.layout.col {
@@ -14,4 +15,10 @@ div.layout.row {
 	display: flex;
 	flex-direction: row;
 	gap: 8px;
+}
+
+div.layout.frame {
+	background-color: #ddd8;
+	border-radius: 8px;
+	padding: 8px;
 }

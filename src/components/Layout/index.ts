@@ -23,6 +23,7 @@ export default function Layout(props: {
     size?: string,
     fill?: number | Marker,
     gap?: number | false,
+    frame?: Marker,
     children: any,
 }) {
     const classes = () => {
@@ -30,6 +31,7 @@ export default function Layout(props: {
             "layout": true,
             "col": getMarker(props.column),
             "row": getMarker(props.row),
+            "frame": getMarker(props.frame),
         };
     };
     const style = () => {

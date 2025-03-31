@@ -1,7 +1,8 @@
 ﻿body {
   padding: 8px;
   font: 14px Helvetica, Arial, sans-serif;
-  height: calc(100vh - 16px);
+  height: 100vh;
+  box-sizing: border-box;
   background-color: white;
   background-image: radial-gradient(gray 0.5px, transparent 0.5px),
                     radial-gradient(gray 0.5px, transparent 0.5px);
