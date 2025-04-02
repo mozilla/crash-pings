@@ -1,3 +1,5 @@
+import html from "solid-js/html";
+
 function getY(max: number, height: number, diff: number, value: number): number {
   return parseFloat((height - (value * height / max) + diff).toFixed(2));
 }
@@ -20,7 +22,7 @@ function buildElement(tag: string, attrs: { [key: string]: string | number }) {
   return element;
 }
 
-type Entry = { value: number, [key: string]: any };
+type Entry = { value: number, date: string };
 type Options = {
   onmousemove?: (event: MouseEvent, currentdatapoint: DataPoint) => void,
   onmouseout?: (event: MouseEvent) => void,
@@ -34,7 +36,7 @@ type DataPoint = {
   index: number,
   x: number,
   y: number,
-  [key: string]: any
+  date: string,
 };
 
 function requireAttr(svg: SVGElement, field: string): string {
@@ -45,7 +47,7 @@ function requireAttr(svg: SVGElement, field: string): string {
   return item;
 }
 
-export function sparkline(svg: SVGElement, entries: number[] | Entry[], options: Options) {
+export function sparkline(svg: SVGElement, entries: Entry[], options: Options) {
   removeChildren(svg);
 
   if (entries.length <= 1) {
@@ -53,13 +55,6 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
   }
 
   options = options || {};
-
-  if (typeof (entries[0]) === "number") {
-    entries = entries.map(entry => {
-      return { value: entry as number };
-    });
-  }
-  entries = entries as Entry[];
 
   // This function will be called whenever the mouse moves
   // over the SVG. You can use it to render something like a
@@ -129,7 +124,7 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
     const x = index * offset + spotDiameter;
     const y = getY(max, height, strokeWidth + spotRadius, value);
 
-    datapoints.push(Object.assign({}, entries[index] as { value: number }, {
+    datapoints.push(Object.assign({}, entries[index], {
       index: index,
       x: x,
       y: y
@@ -139,7 +134,7 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
   });
 
   const path = buildElement("path", {
-    class: "sparkline--line",
+    class: "sparkline-line",
     d: pathCoords,
     fill: "none"
   });
@@ -147,7 +142,7 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
   let fillCoords = `${pathCoords} V ${fullHeight} L ${spotDiameter} ${fullHeight} Z`;
 
   const fill = buildElement("path", {
-    class: "sparkline--fill",
+    class: "sparkline-fill",
     d: fillCoords,
     stroke: "none"
   });
@@ -160,7 +155,7 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
   }
 
   const cursor = buildElement("line", {
-    class: "sparkline--cursor",
+    class: "sparkline-cursor",
     x1: offscreen,
     x2: offscreen,
     y1: 0,
@@ -169,7 +164,7 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
   });
 
   const spot = buildElement("circle", {
-    class: "sparkline--spot",
+    class: "sparkline-spot",
     cx: offscreen,
     cy: offscreen,
     r: spotRadius
@@ -182,7 +177,6 @@ export function sparkline(svg: SVGElement, entries: number[] | Entry[], options:
     width: requireAttr(svg, "width"),
     height: requireAttr(svg, "height"),
     style: "fill: transparent; stroke: transparent",
-    class: "sparkline--interaction-layer",
   });
   svg.appendChild(interactionLayer);
 
@@ -243,14 +237,33 @@ function findClosest(target: Element, tagName: string) {
 
 const sloptions: Options = {
   onmousemove(event, datapoint) {
-    var svg = findClosest(event.target as Element, "svg");
-    var date = (new Date(datapoint["date"])).toDateString();
+    const svg = findClosest(event.target as Element, "svg");
+    const date = (new Date(datapoint.date)).toDateString();
 
-    var valueElement = svg.previousElementSibling!;
-    valueElement.textContent = '' + datapoint.value.toFixed(0) + ' - ' + date;
+    const valueElement = svg.previousElementSibling!;
+    valueElement.textContent = datapoint.value.toFixed(0) + ' - ' + date;
+  },
+  onmouseout(event) {
+    const svg = findClosest(event.target as Element, "svg");
+    const valueElement = svg.previousElementSibling!;
+    valueElement.textContent = '';
   }
 };
 
-export function makeSparkline(el: SVGElement, data: Entry[]) {
-  sparkline(el, data, sloptions);
+export default function Sparkline(props: {
+  data: Entry[],
+  title?: string,
+}) {
+  const description = () => props.data.map(d => `${d.date}: ${d.value} pings`).join(", ");
+  return html`
+      <figure class="sparkline-container" title=${() => props.title}>
+          <figcaption style="display: inline">Ping count per date</figcaption>
+          <div aria-hidden class="sparkline-value">&nbsp;</div>
+          <svg ref=${(el: SVGElement) => sparkline(el, props.data, sloptions)}
+              class="sparkline-svg" width="300" height="50" stroke-width="1"
+              aria-label="Line graph depicting ping count per date"
+              aria-description=${description}
+              ></svg>
+      </figure>
+  `;
 }

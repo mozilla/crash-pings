@@ -1,3 +1,35 @@
-div.sparkline-container {
-	float: right;
+.sparkline-container {
+  float: right;
+}
+
+.sparkline {
+  stroke: #888;
+  fill: #8883;
+}
+
+.sparkline-value {
+  font-size: 0.8em;
+  margin-top: 0.1em;
+  float: right;
+}
+
+.sparkline-svg {
+  display: block;
+}
+
+.sparkline-spot {
+  stroke: #888;
+  fill: #8883;
+}
+
+.sparkline-cursor {
+  stroke: #888;
+}
+
+.sparkline-fill {
+  fill: #8883;
+}
+
+.sparkline-line {
+  stroke: #888;
 }

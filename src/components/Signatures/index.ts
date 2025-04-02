@@ -1,7 +1,7 @@
 import type { Ping } from "app/data/source";
 import type { StringIndex } from "app/data/format";
 import { allPings } from "app/data/source";
-import { createMemo, createEffect, on } from "solid-js";
+import { createMemo, createEffect, createSignal, on } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "app/components/Selectable";
 import Layout from "app/components/Layout";
@@ -22,8 +22,9 @@ export class SignatureInfo extends SingleSelectable(Object) {
     }
 }
 
+type SortBy = "clients" | "pings";
+
 export default function Signatures(props: {
-    sort: "clients" | "pings",
     pings: Ping[],
     selectedSignature?: (info: SignatureInfo | undefined) => void,
 }) {
@@ -33,6 +34,8 @@ export default function Signatures(props: {
             props.selectedSignature(sig);
         }
     }
+
+    const [sort, setSort] = createSignal<SortBy>("clients");
 
     // Clear the selected signature whenever the pings change.
     createEffect(on(() => props.pings, () => selectSignature(undefined)));
@@ -71,21 +74,27 @@ export default function Signatures(props: {
 
     const sortedSignatures = createMemo(() => {
         const { signatures, totalPings, totalClients } = processed();
-        const sortVal = props.sort == "clients" ? (s: SignatureInfo) => s.clientCount : (s: SignatureInfo) => s.pingCount;
-        const percTotal = props.sort == "clients" ? totalClients : totalPings;
+        const sortVal = sort() == "clients" ? (s: SignatureInfo) => s.clientCount : (s: SignatureInfo) => s.pingCount;
+        const percTotal = sort() == "clients" ? totalClients : totalPings;
 
         for (const sig of signatures) {
             sig.percentage = sortVal(sig) * 100 / percTotal;
         }
 
         return signatures.sort((a, b) => b.percentage - a.percentage);
-    });
+    },
+        undefined,
+        // We always return the same value (the signatures array), but modify
+        // it internally as an optimization, so we set `equals: false` to
+        // always signal a change.
+        { equals: false }
+    );
 
     const header = () => {
         const { signatures, totalPings, totalClients } = processed();
-        return html`<header role="caption">
+        return html`<h2>
             ${signatures.length} signatures, ${totalClients} clients, ${totalPings} crash pings
-        </header>`;
+        </h2>`;
     };
 
     const copyText = (s: string) => {
@@ -98,12 +107,16 @@ export default function Signatures(props: {
         });
     };
 
+    const selectOn = (which: SortBy) => () => {
+        return { "selected": sort() == which };
+    };
+
     const renderSignature = (sig: SignatureInfo, idx: number) => {
         const url = `https://crash-stats.mozilla.org/search/?signature=~${encodeURIComponent(sig.signature)}`;
         return html`
           <div role="row" onClick=${(_: Event) => selectSignature(sig)} class="listrow" classList=${() => sig.selectedClassList}>
             <div role="cell" class="rank">${idx + 1}</div>
-            <div role="cell" class="percent">${sig.percentage.toFixed(1)}%</div>
+            <div role="cell" class="percent">${sig.percentage.toFixed(2)}%</div>
             <div role="cell" class="signature"><tt>${sig.signature}</tt></div>
             <div role="cell" class="copy"><span role="button" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden class="icon fas fa-copy copyicon"></span></span></div>
             <div role="cell" class="search"><a href=${url} target="_blank" title="Search for signature"><span aria-hidden class="icon fas fa-signature"></span></a></div>
@@ -122,8 +135,22 @@ export default function Signatures(props: {
                 <div role="columnheader" class="signature">signature</div>
                 <div role="columnheader" class="copy"></div>
                 <div role="columnheader" class="search"></div>
-                <div role="columnheader" class="clients">clients</div>
-                <div role="columnheader" class="count">count</div>
+                <div role="columnheader" class="clients">
+                    <span role="button" title="Sort by client count"
+                        onClick=${(_: Event) => setSort("clients")}
+                        classList=${selectOn("clients")}
+                        >
+                        clients
+                    </span>
+                </div>
+                <div role="columnheader" class="count">
+                    <span role="button" title="Sort by ping count"
+                        onClick=${(_: Event) => setSort("pings")}
+                        classList=${selectOn("pings")}
+                        >
+                        count
+                    </span>
+                </div>
             </div>
         <//>
         <${Layout} fill>

@@ -8,8 +8,15 @@
                     radial-gradient(gray 0.5px, transparent 0.5px);
   background-size: 5px 5px;
   background-position: 0 0, 2.5px 2.5px;
+  cursor: default;
 }
 
-header {
-  font-size: 2em;
+/* Margins make sense in a document, but we use headers at the top of sections,
+ * so don't use margins by default. */
+h1, h2 {
+  margin: 0;
+}
+
+[role=button] {
+  cursor: pointer;
 }

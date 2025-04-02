@@ -1,4 +1,5 @@
 import html from "solid-js/html";
+import { Dynamic } from "solid-js/web";
 import "./layout.css";
 
 type Marker = boolean | "";
@@ -24,8 +25,10 @@ export default function Layout(props: {
     fill?: number | Marker,
     gap?: number | false,
     frame?: Marker,
+    element?: string,
     children: any,
 }) {
+    const element = props.element ?? "div";
     const classes = () => {
         return {
             "layout": true,
@@ -52,5 +55,5 @@ export default function Layout(props: {
         }
         return ret;
     };
-    return html`<div style=${style} classList=${classes}>${props.children}</div>`;
+    return html`<${Dynamic} component=${element} style=${style} classList=${classes}>${props.children}<//>`;
 }

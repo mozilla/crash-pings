@@ -1,23 +1,23 @@
-div.layout {
+.layout {
 	height: 100%;
 	width: 100%;
 	overflow: auto;
 	box-sizing: border-box;
 }
 
-div.layout.col {
+.layout.col {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 }
 
-div.layout.row {
+.layout.row {
 	display: flex;
 	flex-direction: row;
 	gap: 8px;
 }
 
-div.layout.frame {
+.layout.frame {
 	background-color: #ddd8;
 	border-radius: 8px;
 	padding: 8px;

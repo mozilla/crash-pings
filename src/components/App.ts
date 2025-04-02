@@ -92,12 +92,12 @@ export default function App() {
 
     return html`
     <${Layout} column>
-        <${Layout} row size="content">
-            <header>Crash Pings</header>
+        <${Layout} row size="content" element="header">
+            <h1>Crash Pings</h1>
             <${DateFilter} dates=${setDates} />
         <//>
         <${Suspense} fallback=${loading}>
-            <${Layout} row>
+            <${Layout} row element="main">
                 <${Layout} size="14em">
                     <${Selection} pings=${allPings} selectedPings=${setSelectedPings} filterInfo=${setFilterInfo}>
                         <${MultiselectFilter} field="channel" />

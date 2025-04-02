@@ -50,6 +50,10 @@
 	text-align: right;
 }
 
+.clients > .selected, .count > .selected {
+	text-decoration: underline;
+}
+
 .listrow > .ping-date {
 	width: 10ch;
 }
