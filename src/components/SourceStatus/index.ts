@@ -16,7 +16,7 @@ function renderSource(source: Source) {
         return ret;
     };
     const date = new Date(source.date);
-    const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
+    const monthFormatter = new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" });
     const month = monthFormatter.format(date);
     const day = date.getUTCDate();
     return html`<div class="source-status" style=${style}>
