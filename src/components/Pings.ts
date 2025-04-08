@@ -1,11 +1,12 @@
-import { createEffect, createMemo, on } from "solid-js";
+import { createEffect, createMemo, on, onMount, untrack } from "solid-js";
 import html from "solid-js/html";
-import SingleSelectable from "./Selectable";
-import { SignatureInfo } from "./Signatures";
-import type { Ping } from "../data/source";
-import { allPings } from "../data/source";
-import Layout from "./Layout";
+import SingleSelectable from "app/components/Selectable";
+import { SignatureInfo } from "app/components/Signatures";
+import type { Ping } from "app/data/source";
+import { allPings } from "app/data/source";
+import Layout from "app/components/Layout";
 import { VList } from "virtua/solid";
+import settings from "app/settings";
 
 export class PingInfo extends SingleSelectable(Object) {
     ping: Ping;
@@ -20,18 +21,42 @@ export default function Pings(props: {
     signature: SignatureInfo,
     selectedPing?: (ping: PingInfo | undefined) => void,
 }) {
+    const pingData = allPings();
+    const pingInfos = createMemo(() => {
+        const infos = props.signature.pings.map(ping => new PingInfo(ping));
+
+        // Load settings
+        {
+            const pingCrashId = untrack(() => settings.pingCrashId);
+            if (pingCrashId) {
+                const ping: Ping | -1 = pingData.crashid.indexOf(pingCrashId);
+                if (ping !== -1) {
+                    const info = infos.find(i => i.ping == ping);
+                    if (info) selectPing(info);
+                }
+            }
+        }
+
+        return infos;
+    });
+
     const selectPing = (ping: PingInfo | undefined) => {
         PingInfo.setSelected(ping);
+        settings.pingCrashId = ping ? pingData.crashid[ping.ping] : undefined;
         if (props.selectedPing) {
             props.selectedPing(ping);
         }
     };
 
+    let firstRun = true;
     // Clear the selected ping whenever the selected signature changes.
-    createEffect(on(() => props.signature, () => selectPing(undefined)));
-
-    const pingData = allPings();
-    const pingInfos = createMemo(() => props.signature.pings.map(ping => new PingInfo(ping)));
+    createEffect(on(() => props.signature, () => {
+        if (firstRun) {
+            firstRun = false;
+            return;
+        }
+        selectPing(undefined);
+    }));
 
     const renderPingInfo = (info: PingInfo) => html`
         <div class="listrow" classList=${() => info.selectedClassList} onClick=${(_: Event) => selectPing(info)}>

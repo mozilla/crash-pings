@@ -13,10 +13,24 @@
 
 /* Margins make sense in a document, but we use headers at the top of sections,
  * so don't use margins by default. */
-h1, h2 {
+h1, h2, h3 {
   margin: 0;
 }
 
 [role=button] {
   cursor: pointer;
+}
+
+.frame {
+  border-radius: 8px;
+  padding: 8px;
+}
+
+fieldset {
+  border: 0;
+  padding: 0;
+}
+
+fieldset legend {
+  font-size: 0.8em;
 }

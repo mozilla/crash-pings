@@ -44,6 +44,7 @@ export default function SignatureDetail(props: {
         });
 
     return html`
+        <h3><tt>${() => props.signature.signature}</tt></h3>
         ${sparkline}
         ${filterCounts}
     `;

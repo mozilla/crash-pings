@@ -1,0 +1,3 @@
+bun latest
+# netlify-cli should use node 22, as that's the default on the servers
+nodejs 22

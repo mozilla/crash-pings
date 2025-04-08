@@ -1,5 +1,6 @@
 import html from "solid-js/html";
 import { createSignal, untrack, Show } from "solid-js";
+import settings from "app/settings";
 
 function dateString(date: Date): string {
     const s = date.toISOString();
@@ -11,20 +12,15 @@ const DAY_MILLIS = 1000 * 60 * 60 * 24;
 export default function DateFilter(props: {
     dates: (dates: string[]) => void
 }) {
-    const now = Date.now();
-    const now_day = Math.floor(now / DAY_MILLIS);
-    const [currentDates, setCurrentDates] = createSignal({
-        start: new Date((now_day - 7) * DAY_MILLIS),
-        end: new Date((now_day - 1) * DAY_MILLIS),
-    });
-    const [startDate, setStartDate] = createSignal(currentDates().start);
-    const [endDate, setEndDate] = createSignal(currentDates().end);
+    const [startDate, setStartDate] = createSignal(settings.dates.start);
+    const [endDate, setEndDate] = createSignal(settings.dates.end);
 
     const updateDates = () => {
         const dates = [];
         const start = untrack(startDate);
         const end = untrack(endDate);
-        setCurrentDates({ start, end });
+        settings.dates.start = start;
+        settings.dates.end = end;
         let d = start;
         while (d <= end) {
             dates.push(dateString(d));
@@ -37,7 +33,7 @@ export default function DateFilter(props: {
     updateDates();
 
     const showLoadButton = () => {
-        const current = currentDates();
+        const current = settings.dates;
         return startDate().getTime() !== current.start.getTime()
             || endDate().getTime() !== current.end.getTime();
     };
@@ -53,8 +49,8 @@ export default function DateFilter(props: {
         if (date < startDate()) setStartDate(date);
     };
 
-    return html`<fieldset style=${{ border: 0, padding: 0, display: "flex", "flex-direction": "row", "align-items": "baseline", gap: "1ch" }}>
-        <legend style=${{ "font-size": "0.8em" }}>Submission Date</legend>
+    return html`<fieldset style=${{ display: "flex", "flex-direction": "row", "align-items": "baseline", gap: "1ch" }}>
+        <legend>Submission Date</legend>
         <input type="date"
             onChange=${startChanged}
             value=${() => dateString(startDate())}

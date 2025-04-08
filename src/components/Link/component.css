@@ -1,0 +1,39 @@
+#link-settings {
+  margin-right: 8px;
+  margin-top: 8px;
+  width: 25em;
+  background: white;
+  border: 1px solid #ddd;
+  filter: drop-shadow(8px 8px 4px #ddd8);
+}
+
+#link-settings > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#link-settings fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#link-settings legend {
+  margin-bottom: 0.2em;
+}
+
+#link-settings label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-left: 8px;
+}
+
+#link-settings label [type="checkbox"] {
+  align-self: start;
+}
+
+#link-settings label [type="text"] {
+  flex: 1 1 auto;
+}

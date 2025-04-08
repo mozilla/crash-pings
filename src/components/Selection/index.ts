@@ -1,4 +1,5 @@
-import { createEffect, createMemo } from "solid-js";
+import { createEffect, createMemo, untrack } from "solid-js";
+import { modifyMutable, reconcile } from "solid-js/store";
 import html from "solid-js/html";
 import type FilterSpec from "./FilterSpec";
 import FiltersForField from "./FiltersForField";
@@ -6,6 +7,7 @@ import MultiselectFilter from "./MultiselectFilter";
 import type { AllPings, Ping } from "app/data/source";
 import Layout from "app/components/Layout";
 import "./component.css";
+import settings, { type MultiselectSettings } from "app/settings";
 
 export { FiltersForField, MultiselectFilter };
 
@@ -19,18 +21,29 @@ export default function Selection(props: {
     filterInfo?: (filterInfo: FilterInfo) => void,
     children: FilterSpec[],
 }) {
-    const filters = createMemo(() => {
+    const loaded = createMemo(() => {
         const specs = props.children;
         const pings = props.pings;
-        return specs.flatMap(spec => spec.build(pings));
-    });
-    const components = createMemo(() => {
-        const filtersByField = new Map(filters().map(f => [f.field, f]));
-        return filters().map(f => f.component(filtersByField));
+        const filters = specs.flatMap(spec => spec.build(pings));
+        const filtersByField = new Map(filters.map(f => [f.field, f]));
+        const components = filters.map(f => f.component(filtersByField));
+
+        // Load settings
+        untrack(() => {
+            const filterSettings = settings.selection;
+            if (filterSettings) {
+                for (const filter of filters) {
+                    if (filter.label in filterSettings) {
+                        filter.settings = filterSettings[filter.label];
+                    }
+                }
+            }
+        });
+        return { filters, components };
     });
 
     createEffect(() => {
-        const filterFunctions = filters().map(filter => filter.filterFunction()).filter(x => x !== undefined);
+        const filterFunctions = loaded().filters.map(filter => filter.filterFunction()).filter(x => x !== undefined);
         const pings = [];
         for (let i = 0; i < props.pings.crashid.length; i++) {
             if (filterFunctions.every(f => f(i))) {
@@ -40,12 +53,24 @@ export default function Selection(props: {
         props.selectedPings(pings);
     });
 
+    // Store settings
+    createEffect(() => {
+        const filterSettings: { [key: string]: MultiselectSettings } = {};
+        for (const filter of loaded().filters) {
+            const settings = filter.settings;
+            if (!settings) continue;
+            filterSettings[filter.label] = settings;
+        }
+        modifyMutable(settings.selection, reconcile(filterSettings, { merge: true }));
+    });
+
+    // Set up filterInfo based on the filters
     createEffect(() => {
         if (props.filterInfo) {
             props.filterInfo({
                 countFilterValues(pings: Ping[]) {
                     const ret = [];
-                    for (const f of filters()) {
+                    for (const f of loaded().filters) {
                         const counts = f.countValues(pings)
                         if (counts.length == 0) continue;
                         ret.push({ filterLabel: f.label, counts });
@@ -56,5 +81,5 @@ export default function Selection(props: {
         }
     });
 
-    return html`<${Layout} column>${components}</div>`;
+    return html`<${Layout} column>${() => loaded().components}</div>`;
 };

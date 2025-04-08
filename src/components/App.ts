@@ -7,9 +7,11 @@ import Signatures, { SignatureInfo } from "./Signatures";
 import SignatureDetail from "./SignatureDetail";
 import Pings, { PingInfo } from "./Pings";
 import PingDetail from "./PingDetail";
-import { allPings, setDates } from "../data/source";
+import Link from "./Link";
+import { allPings, setDates } from "app/data/source";
 import Layout from "./Layout";
 import SourceStatus from "./SourceStatus";
+import { loadAndPopulateSettings } from "app/settings";
 
 function osVersionName(os: string): ((version: string) => string | undefined) | undefined {
     function windows_nt_10_label(version: string): string {
@@ -82,58 +84,71 @@ export default function App() {
     const [selectedSignature, setSelectedSignature] = createSignal<SignatureInfo>();
     const [filterInfo, setFilterInfo] = createSignal<FilterInfo>();
     const [selectedPing, setSelectedPing] = createSignal<PingInfo>();
+    const [settingsLoaded, setSettingsLoaded] = createSignal(false);
 
-    const loading = () => html`
+    loadAndPopulateSettings(() => setSettingsLoaded(true));
+
+    const loadingSources = () => html`
         <div style=${{ width: "50ch" }}>
             <h2>Loading...</h2>
             <${SourceStatus} />
         </div>
     `;
 
-    return html`
-    <${Layout} column>
-        <${Layout} row size="content" element="header">
-            <h1>Crash Pings</h1>
-            <${DateFilter} dates=${setDates} />
-        <//>
-        <${Suspense} fallback=${loading}>
-            <${Layout} row element="main">
-                <${Layout} size="14em">
-                    <${Selection} pings=${allPings} selectedPings=${setSelectedPings} filterInfo=${setFilterInfo}>
-                        <${MultiselectFilter} field="channel" />
-                        <${MultiselectFilter} field="process" />
-                        <${MultiselectFilter} field="ipc_actor" prettyName="utility ipc actor"
-                            requires=${{ "process": "utility" }} />
-                        <${MultiselectFilter} field="version" />
-                        <${MultiselectFilter} field="os" />
-                        <${FiltersForField} field="os">${osVersionFilter}<//>
-                        <${MultiselectFilter} field="arch" />
-                    <//>
+    const main = () => html`
+        <${Layout} column>
+            <${Layout} row size="content" element="header">
+                <${Layout} size="content">
+                    <h1>Crash Pings</h1>
                 <//>
-                <${Layout} column>
-                    <${Layout} frame>
-                        <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature}><//>
-                    <//>
-                    <${Show} when=${selectedSignature}>
-                        <${Layout} frame size="content">
-                            <${SignatureDetail} signature=${selectedSignature} filterInfo=${filterInfo}><//>
+                <${Layout} size="content">
+                    <${DateFilter} dates=${setDates} />
+                <//>
+                <${Layout} fill=1 />
+                <${Layout} size="content">
+                    <${Link} />
+                <//>
+            <//>
+            <${Suspense} fallback=${loadingSources}>
+                <${Layout} row element="main">
+                    <${Layout} size="14em">
+                        <${Selection} pings=${allPings} selectedPings=${setSelectedPings} filterInfo=${setFilterInfo}>
+                            <${MultiselectFilter} field="channel" />
+                            <${MultiselectFilter} field="process" />
+                            <${MultiselectFilter} field="ipc_actor" prettyName="utility ipc actor"
+                                requires=${{ "process": "utility" }} />
+                            <${MultiselectFilter} field="version" />
+                            <${MultiselectFilter} field="os" />
+                            <${FiltersForField} field="os">${osVersionFilter}<//>
+                            <${MultiselectFilter} field="arch" />
                         <//>
                     <//>
-                <//>
-                <${Layout} column>
-                    <${Show} when=${selectedSignature}>
+                    <${Layout} column>
                         <${Layout} frame>
-                            <${Pings} signature=${selectedSignature} selectedPing=${setSelectedPing}><//>
+                            <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature}><//>
                         <//>
-                        <${Show} when=${selectedPing}>
+                        <${Show} when=${selectedSignature}>
+                            <${Layout} frame size="content">
+                                <${SignatureDetail} signature=${selectedSignature} filterInfo=${filterInfo}><//>
+                            <//>
+                        <//>
+                    <//>
+                    <${Layout} column>
+                        <${Show} when=${selectedSignature}>
                             <${Layout} frame>
-                                <${PingDetail} ping=${selectedPing}><//>
+                                <${Pings} signature=${selectedSignature} selectedPing=${setSelectedPing}><//>
+                            <//>
+                            <${Show} when=${selectedPing}>
+                                <${Layout} frame>
+                                    <${PingDetail} ping=${selectedPing}><//>
+                                <//>
                             <//>
                         <//>
                     <//>
                 <//>
             <//>
         <//>
-    <//>
     `;
+
+    return html`<${Show} when=${settingsLoaded}>${main}<//>`;
 };

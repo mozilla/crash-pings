@@ -1,11 +1,13 @@
 import type { Ping } from "app/data/source";
 import type { StringIndex } from "app/data/format";
 import { allPings } from "app/data/source";
-import { createMemo, createEffect, createSignal, on } from "solid-js";
+import { createMemo, createEffect, on, untrack } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "app/components/Selectable";
 import Layout from "app/components/Layout";
 import { VList } from "virtua/solid";
+import settings from "app/settings";
+import copyText from "app/copy";
 import "./component.css";
 
 export class SignatureInfo extends SingleSelectable(Object) {
@@ -30,15 +32,11 @@ export default function Signatures(props: {
 }) {
     const selectSignature = (sig: SignatureInfo | undefined) => {
         SignatureInfo.setSelected(sig);
+        settings.signature = sig?.signature;
         if (props.selectedSignature) {
             props.selectedSignature(sig);
         }
     }
-
-    const [sort, setSort] = createSignal<SortBy>("clients");
-
-    // Clear the selected signature whenever the pings change.
-    createEffect(on(() => props.pings, () => selectSignature(undefined)));
 
     const processed = createMemo(() => {
         const pingData = allPings();
@@ -69,13 +67,34 @@ export default function Signatures(props: {
             [0, 0]
         );
 
+        // Load settings
+        {
+            const signature = untrack(() => settings.signature);
+            if (signature) {
+                const sig = signatures.find(sig => sig.signature == signature);
+                if (sig) {
+                    selectSignature(sig);
+                }
+            }
+        }
+
         return { signatures, totalPings, totalClients };
     });
 
+    // Clear the selected signature whenever the pings change.
+    let firstRun = true;
+    createEffect(on(() => props.pings, () => {
+        if (firstRun) {
+            firstRun = false;
+            return;
+        }
+        selectSignature(undefined);
+    }));
+
     const sortedSignatures = createMemo(() => {
         const { signatures, totalPings, totalClients } = processed();
-        const sortVal = sort() == "clients" ? (s: SignatureInfo) => s.clientCount : (s: SignatureInfo) => s.pingCount;
-        const percTotal = sort() == "clients" ? totalClients : totalPings;
+        const sortVal = settings.sort == "clients" ? (s: SignatureInfo) => s.clientCount : (s: SignatureInfo) => s.pingCount;
+        const percTotal = settings.sort == "clients" ? totalClients : totalPings;
 
         for (const sig of signatures) {
             sig.percentage = sortVal(sig) * 100 / percTotal;
@@ -97,18 +116,8 @@ export default function Signatures(props: {
         </h2>`;
     };
 
-    const copyText = (s: string) => {
-        if (typeof (navigator.clipboard) == 'undefined') {
-            alert('Cannot access clipboard');
-            return;
-        }
-        navigator.clipboard.writeText(s).catch(function(error) {
-            alert(`Failed to write to clipboard: ${error.message}`);
-        });
-    };
-
     const selectOn = (which: SortBy) => () => {
-        return { "selected": sort() == which };
+        return { "selected": settings.sort == which };
     };
 
     const renderSignature = (sig: SignatureInfo, idx: number) => {
@@ -137,7 +146,7 @@ export default function Signatures(props: {
                 <div role="columnheader" class="search"></div>
                 <div role="columnheader" class="clients">
                     <span role="button" title="Sort by client count"
-                        onClick=${(_: Event) => setSort("clients")}
+                        onClick=${(_: Event) => settings.sort = "clients"}
                         classList=${selectOn("clients")}
                         >
                         clients
@@ -145,7 +154,7 @@ export default function Signatures(props: {
                 </div>
                 <div role="columnheader" class="count">
                     <span role="button" title="Sort by ping count"
-                        onClick=${(_: Event) => setSort("pings")}
+                        onClick=${(_: Event) => settings.sort = "pings"}
                         classList=${selectOn("pings")}
                         >
                         count

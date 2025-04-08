@@ -1,5 +1,5 @@
-import type { AllPings, Ping } from "../../data/source";
-import type { IndexedStringPingField } from "../../data/format";
+import type { AllPings, Ping } from "app/data/source";
+import type { IndexedStringPingField } from "app/data/format";
 import type { MultiselectFilterSpec } from "./MultiselectFilter";
 
 export type FieldValue = number;

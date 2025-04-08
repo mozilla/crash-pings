@@ -1,8 +1,9 @@
 import { createSignal, createEffect, onMount, untrack } from "solid-js";
 import html from "solid-js/html";
 import type { AllPings, FieldValue, FilterSpec, Ping, FilterField } from "./FilterSpec";
-import type { IString } from "../../data/source";
-import { getTypeDescriptor } from "../../data/format";
+import type { IString } from "app/data/source";
+import { getTypeDescriptor } from "app/data/format";
+import type { MultiselectSettings } from "app/settings";
 
 export type MultiselectValue = {
     value: FieldValue,
@@ -84,7 +85,7 @@ export class MultiselectFilterSpec implements FilterSpec {
 
     pingValues: IString<string | null> | undefined;
 
-    selectedValues: (() => Set<FieldValue>);
+    selectedValues: () => Set<FieldValue>;
     #setSelectedValues: (val: Set<FieldValue>) => void;
 
     get field() {
@@ -105,6 +106,42 @@ export class MultiselectFilterSpec implements FilterSpec {
     build(pings: AllPings) {
         this.pingValues = pings[this.props.field];
         return [this];
+    }
+
+    get settings(): MultiselectSettings | undefined {
+        const selectedValues = this.selectedValues();
+        const ret: MultiselectSettings = {};
+
+        // Only set selected when some subset of values is selected
+        if (selectedValues.size !== this.#fieldValueOptions.size) {
+            ret.selected = selectedValues.keys().map(i => this.pingValues!.strings[i]).toArray();
+        }
+        if (this.#setGrouped) {
+            ret.grouped = this.#grouped();
+        }
+
+        if (ret.selected !== undefined || ret.grouped !== undefined) {
+            return ret;
+        } else {
+            return undefined;
+        }
+    }
+
+    set settings(value: MultiselectSettings) {
+        if (value.selected !== undefined) {
+            const selectedStrings = new Set(value.selected);
+            const selectedValues = new Set<FieldValue>();
+            for (let i = 0; i < this.pingValues!.strings.length; i++) {
+                const s = this.pingValues!.strings[i];
+                if (selectedStrings.has(s)) {
+                    selectedValues.add(i);
+                }
+            }
+            this.#setSelectedValues(selectedValues);
+        }
+        if (value.grouped !== undefined && this.#setGrouped) {
+            this.#setGrouped(value.grouped);
+        }
     }
 
     filterFunction(): ((ping: Ping) => boolean) | undefined {
@@ -155,6 +192,7 @@ export class MultiselectFilterSpec implements FilterSpec {
     #limitTo: Set<Ping> | undefined;
     #disabled: () => boolean = () => false;
     #grouped: () => boolean = () => false;
+    #setGrouped: ((value: boolean) => void) | undefined;
     #fieldValueOptions: Map<FieldValue, MultiselectFilterOption> = new Map();
 
     component(filtersByLabel: Map<string, MultiselectFilterSpec>) {
@@ -220,10 +258,11 @@ export class MultiselectFilterSpec implements FilterSpec {
         let groupToggle;
         let groupedOptions: Map<string, MultiselectFilterOption[]> | undefined;
         {
-            const [grouped, setGrouped] = createSignal(false);
-            this.#grouped = grouped;
             const hasGroups = values.some(v => v.hasGroup);
             if (hasGroups) {
+                const [grouped, setGrouped] = createSignal(false);
+                this.#grouped = grouped;
+                this.#setGrouped = setGrouped;
                 setGrouped(true);
                 groupedOptions = new Map();
                 for (const v of values) {
@@ -249,7 +288,7 @@ export class MultiselectFilterSpec implements FilterSpec {
 
         const options = () => {
             let opts = this.#grouped() ? groupedOptions!.keys().map(k => { return { label: k, value: k } }).toArray() : values;
-            return opts.map(v => html`<option value=${v.value} selected>${v.label}</option>`);
+            return opts.map(v => html`<option value=${v.value}>${v.label}</option>`);
         };
 
         let selectEl: HTMLSelectElement;
@@ -260,25 +299,38 @@ export class MultiselectFilterSpec implements FilterSpec {
             setTimeout(() => selectEl.dispatchEvent(new Event('change')), 0);
         };
 
-        const [selectedOptions, setSelectedOptions] = createSignal<HTMLOptionElement[]>([]);
-
+        // Update options when `selectedValues` changes (this will only have a
+        // meaningful effect when settings are loaded).
         createEffect(() => {
-            let values = selectedOptions();
+            const values = this.selectedValues();
+            let optionValues: Set<string> | undefined;
+            if (this.#grouped()) {
+                optionValues = new Set();
+                for (const [k, v] of groupedOptions!) {
+                    if (v.every(opt => values.has(opt.value))) {
+                        optionValues.add(k);
+                    }
+                }
+            } else {
+                optionValues = new Set(values.keys().map(n => n.toString()));
+            }
+            for (const o of selectEl.options) {
+                o.selected = optionValues.size === 0 || optionValues.has(o.value);
+            }
+        });
+
+        const changed = (_: Event) => {
+            let values = Array.from(selectEl.selectedOptions);
             let result: Set<FieldValue>;
 
-            // We don't track `grouped()` here because the effect may fire
-            // again in an inconsistent state (grouping turned on/off but
-            // `selectedOptions` being the old state). Instead we rely on
-            // `selectedOptions` changing when `grouped()` changes.
+            // We rely on `selectedOptions` changing when `grouped()` changes.
             if (untrack(() => this.#grouped())) {
                 result = new Set(values.flatMap(o => groupedOptions!.get(o.value)!.map(v => v.value)));
             } else {
                 result = new Set(values.map(o => parseInt(o.value)));
             }
             this.#setSelectedValues(result);
-        });
-
-        const changed = (_: Event) => setSelectedOptions(Array.from(selectEl.selectedOptions));
+        };
         onMount(() => selectEl.dispatchEvent(new Event('change')));
 
         const fieldid = () => `filter-${prettyName().replace(" ", "-")}`;
