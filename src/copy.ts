@@ -3,7 +3,8 @@ export default function copyText(s: string) {
         alert('Cannot access clipboard');
         return;
     }
-    navigator.clipboard.writeText(s).catch(function(error) {
-        alert(`Failed to write to clipboard: ${error.message}`);
-    });
+    navigator.clipboard.writeText(s)
+        .catch(error => {
+            alert(`Failed to write to clipboard: ${error.message}`);
+        });
 }

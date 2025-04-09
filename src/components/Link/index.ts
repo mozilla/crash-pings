@@ -1,7 +1,7 @@
 import html from "solid-js/html";
 import { createSignal, Show } from "solid-js";
 import "./component.css";
-import settings, { save as saveSettings } from "app/Settings";
+import settings, { save as saveSettings } from "app/settings";
 
 type BoolSetting = keyof {
     [Key in keyof typeof settings.meta as typeof settings.meta[Key] extends boolean ? Key : never]: any
@@ -9,12 +9,13 @@ type BoolSetting = keyof {
 
 function Checkbox(props: {
     field: BoolSetting,
+    title?: string,
     children: string,
 }) {
     const change = (e: Event) => {
         settings.meta[props.field] = (e.currentTarget as HTMLInputElement).checked;
     };
-    return html`<label>
+    return html`<label title=${props.title}>
         <input type="checkbox" checked=${() => settings.meta[props.field]} onChange=${change} />
         ${props.children}
     </label>`;
@@ -44,6 +45,7 @@ export default function Link(_props: {}) {
             expiration: "1y",
             relativeDates: false,
             storeDates: true,
+            storeEtags: true,
             storeSelection: true,
             storeSignature: true,
             storePing: true,
@@ -82,7 +84,7 @@ export default function Link(_props: {}) {
     };
 
     return html`
-        <button style="aspect-ratio: 1" onPointerdown=${down} onPointerup=${up} aria-haspopup="dialog">
+        <button style="aspect-ratio: 1" onPointerdown=${down} onPointerup=${up} aria-haspopup="dialog" title="Create a link to the current page. Press and hold to open advanced settings.">
             <span class="fa-solid fa-link"></span>
         </button>
         <dialog ref=${(e: HTMLDialogElement) => dialog = e} onClick=${checkCloseDialog} id="link-settings" class="frame">
@@ -91,20 +93,21 @@ export default function Link(_props: {}) {
                     <legend>Preserve</legend>
                     <${Checkbox} field="storeDates">Dates<//>
                     <${Show} when=${() => settings.meta.storeDates}>
-                        <${Checkbox} field="relativeDates">Make dates relative<//>
+                        <${Checkbox} field="relativeDates" title="Dates will be relative to the current date.">Make dates relative<//>
                     <//>
-                    <${Checkbox} field="storeSelection">Filter selection<//>
+                    <${Checkbox} field="storeEtags" title="When loaded, a warning will be shown if the ping data sources have changed.">Data source hashes<//>
+                    <${Checkbox} field="storeSelection">Selected filters<//>
                     <${Checkbox} field="storeSort">Signature sorting<//>
                     <${Checkbox} field="storeSignature">Selected signature<//>
                     <${Show} when=${() => settings.meta.storeSignature}>
                         <${Checkbox} field="storePing">Selected ping<//>
                     <//>
-                    <${Checkbox} field="storeMeta">Link settings<//>
+                    <${Checkbox} field="storeMeta" title="Store these settings, reflecting how a link was generated.">Link settings<//>
                 </fieldset>
-                <label>
+                <label title="Expiration durations may be a combination of a number followed by 'y' (year), 'm' (month), 'w' (week), or 'd' (day).">
                     Expiration: <input type="text" value=${() => settings.meta.expiration} onChange=${expirationChange} />
                 </label>
-                <label>
+                <label title="If a link with the label already exists, a new unique link based on the label will be created.">
                     Label (optional): <input type="text" onChange=${labelChange} value=${label} />
                 </label>
                 <button onClick=${() => createLink()}>Create link</button>

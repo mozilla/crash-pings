@@ -1,6 +1,7 @@
 import { emptyPings, pingFields, PingFieldType } from "./format";
 import type { Pings, StringIndex, IStringData, IndexedStringPingField } from "./format";
 import { createResource, createRoot, createSignal } from "solid-js";
+import settings from "app/settings";
 
 export type IndexArray = Uint8Array | Uint16Array | Uint32Array;
 
@@ -110,19 +111,22 @@ export type Ping = number;
 // If we didn't care much about the set operations we could also evaluate the
 // string indices since at this point it will be efficient in memory either
 // way, but the volume of data necessitates higher performance filtering.
-async function joinData(allData: [UrlSource, Pings][]): Promise<AllPings> {
-    const totalPings = allData.reduce((sum, d) => sum + d[1].crashid.length, 0);
+async function joinData(allData: UrlFetchedSource[]): Promise<AllPings> {
+    const totalPings = allData.reduce((sum, d) => sum + d.data.crashid.length, 0);
 
     const pings = emptyPings(
         k => new IStringBuilder(totalPings, SIZE_HINTS[k]),
         () => new Array(totalPings),
     ) as Pings<IStringBuilder<string>, IStringBuilder<string | null>>;
 
+    // Give the UI a chance to show status changes periodically.
+    const showStatusChanges = () => new Promise(resolve => setTimeout(resolve, 0));
+
     let offset = 0;
-    for (const [source, data] of allData) {
+    for (const { source, data } of allData) {
         source.setStatus({ message: "merging" });
 
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await showStatusChanges();
 
         // Populate the return data.
         for (const [field, desc] of pingFields()) {
@@ -142,7 +146,7 @@ async function joinData(allData: [UrlSource, Pings][]): Promise<AllPings> {
 
         source.setStatus({ success: true, message: `loaded ${data.crashid.length} pings` });
     }
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await showStatusChanges();
 
     // Build the IStringBuilders
     for (const [field, _] of pingFields().filter(([_, d]) => d.type === PingFieldType.IndexedString)) {
@@ -177,8 +181,43 @@ class UrlSource implements Source {
     }
 }
 
+type FetchedSource = {
+    source: Source,
+    data?: Pings,
+    etag?: string,
+};
+
+type UrlFetchedSource = {
+    source: UrlSource,
+    data: Pings,
+};
+
+function checkAndUpdateEtags(sources: FetchedSource[]) {
+    let newEtags: string[] | undefined = sources.map(s => s.etag ?? "");
+    if (newEtags.every(s => s.length === 0)) {
+        newEtags = undefined;
+    }
+
+    if (settings.data_etags && newEtags) {
+        let mismatch = settings.data_etags.length !== newEtags.length;
+        if (!mismatch) {
+            for (let i = 0; i < newEtags.length; i++) {
+                if (settings.data_etags[i] !== newEtags[i]) {
+                    mismatch = true;
+                    break;
+                }
+            }
+        }
+        if (mismatch) {
+            alert("Warning: the source data has changed since the link was created.");
+        }
+    }
+
+    settings.data_etags = newEtags;
+}
+
 const RETRY_TIME_MS = 2000;
-async function fetchSource(source: UrlSource, signal: AbortSignal): Promise<[Source, Pings | undefined]> {
+async function fetchSource(source: UrlSource, signal: AbortSignal): Promise<FetchedSource> {
     try {
         let response = await fetch(source.url, { signal });
         // Retry fetches as long as 202 status is returned.
@@ -191,13 +230,14 @@ async function fetchSource(source: UrlSource, signal: AbortSignal): Promise<[Sou
         const data: Pings = await response.json();
         if (data.crashid.length === 0) {
             source.setStatus({ success: false, message: "not available" });
-            return [source, undefined];
+            return { source };
         }
         source.setStatus({ message: "downloaded" });
-        return [source, data];
+        const etag = response.headers.get("ETag") ?? undefined;
+        return { source, data, etag };
     } catch (error) {
         source.setStatus({ success: false, message: `failed: ${error}` });
-        return [source, undefined];
+        return { source };
     }
 }
 
@@ -206,7 +246,8 @@ async function fetchSources(sources: UrlSource[]): Promise<AllPings> {
     if (abortController) abortController.abort();
     abortController = new AbortController();
     const allData = await Promise.all(sources.map(s => fetchSource(s, abortController!.signal)));
-    return await joinData(allData.filter(([_, p]) => p !== undefined) as [UrlSource, Pings][]);
+    checkAndUpdateEtags(allData);
+    return await joinData(allData.filter(s => s.data !== undefined) as UrlFetchedSource[]);
 }
 
 const { urlSources, setSources, allPings } = createRoot(() => {

@@ -28,12 +28,16 @@ export default async (_req: Request, context: Context): Promise<Response> => {
 		});
 	}
 
-	return new Response(result.data, {
-		headers: {
-			"Content-Encoding": "gzip",
-			"Content-Type": "application/json"
-		}
-	});
+	const headers: Record<string, string> = {
+		"Content-Encoding": "gzip",
+		"Content-Type": "application/json",
+	};
+
+	if (result.etag) {
+		headers["ETag"] = result.etag;
+	}
+
+	return new Response(result.data, { headers });
 };
 
 export const config: Config = {

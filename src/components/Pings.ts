@@ -1,4 +1,4 @@
-import { createEffect, createMemo, on, onMount, untrack } from "solid-js";
+import { createEffect, createMemo, on, untrack } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "app/components/Selectable";
 import { SignatureInfo } from "app/components/Signatures";

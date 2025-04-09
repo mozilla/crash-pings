@@ -1,6 +1,6 @@
 import { createRoot, createEffect, on } from "solid-js";
 import { createMutable, modifyMutable, reconcile } from "solid-js/store";
-import copyText from "app/copy";
+import copyText from "app/copy.ts";
 
 // Application settings.
 //
@@ -12,6 +12,7 @@ import copyText from "app/copy";
 // grouping labels in MultiselectFilters).
 export type Settings = {
     dates: { start: Date, end: Date },
+    data_etags: string[] | undefined,
     selection: { [key: string]: MultiselectSettings },
     signature: string | undefined,
     pingCrashId: string | undefined,
@@ -22,6 +23,7 @@ export type Settings = {
         expiration: string,
         relativeDates: boolean,
         storeDates: boolean,
+        storeEtags: boolean,
         storeSelection: boolean,
         storeSignature: boolean,
         storePing: boolean,
@@ -46,6 +48,7 @@ interface SavedSettingsV1 extends SavedSettings {
     // `start`/`end` are absolute day numbers, or relative to the current
     // day if `relative`. Days are inclusive.
     dates?: { start: number, end: number, relative?: boolean },
+    data_etags?: string[],
     selection?: { [key: string]: MultiselectSettings },
     signature?: string,
     pingCrashId?: string,
@@ -54,6 +57,7 @@ interface SavedSettingsV1 extends SavedSettings {
         expiration: string,
         relativeDates: boolean,
         storeDates: boolean,
+        storeEtags: boolean,
         storeSelection: boolean,
         storeSignature: boolean,
         storePing: boolean,
@@ -96,6 +100,7 @@ function loadSettings(settings?: SavedSettings): Settings {
         const s = settings as SavedSettingsV1;
         return {
             dates: loadDates(s.dates),
+            data_etags: s.data_etags,
             selection: s.selection ?? {},
             signature: s.signature,
             pingCrashId: s.pingCrashId,
@@ -104,6 +109,7 @@ function loadSettings(settings?: SavedSettings): Settings {
                 expiration: "1y",
                 relativeDates: false,
                 storeDates: true,
+                storeEtags: true,
                 storeSelection: true,
                 storeSignature: true,
                 storePing: true,
@@ -141,6 +147,9 @@ function saveSettings(settings: Settings): LatestSavedSettings {
             s.dates.end -= now_day;
             s.dates.relative = true;
         }
+    }
+    if (settings.meta.storeEtags) {
+        s.data_etags = settings.data_etags;
     }
     if (settings.meta.storeMeta) {
         s.meta = settings.meta;
