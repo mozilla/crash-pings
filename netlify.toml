@@ -8,6 +8,9 @@ NODE_ENV = "production"
 [context.dev.environment]
 NODE_ENV = "development"
 
+[functions."store-ping-data-background"]
+included_files = ["./netlify/functions/store-ping-data-background/*.sql"]
+
 [dev]
 command = "bun run bun/serve.ts"
 port = 8888
