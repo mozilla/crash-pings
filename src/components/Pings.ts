@@ -21,6 +21,14 @@ export default function Pings(props: {
     signature: SignatureInfo,
     selectedPing?: (ping: PingInfo | undefined) => void,
 }) {
+    const selectPing = (ping: PingInfo | undefined) => {
+        PingInfo.setSelected(ping);
+        settings.pingCrashId = ping ? pingData.crashid[ping.ping] : undefined;
+        if (props.selectedPing) {
+            props.selectedPing(ping);
+        }
+    };
+
     const pingData = allPings();
     const pingInfos = createMemo(() => {
         const infos = props.signature.pings.map(ping => new PingInfo(ping));
@@ -39,14 +47,6 @@ export default function Pings(props: {
 
         return infos;
     });
-
-    const selectPing = (ping: PingInfo | undefined) => {
-        PingInfo.setSelected(ping);
-        settings.pingCrashId = ping ? pingData.crashid[ping.ping] : undefined;
-        if (props.selectedPing) {
-            props.selectedPing(ping);
-        }
-    };
 
     let firstRun = true;
     // Clear the selected ping whenever the selected signature changes.
