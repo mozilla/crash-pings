@@ -6,6 +6,8 @@ import type { LatestSavedSettings } from "app/settings.ts";
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const LINK_CHARS = BASE62;
 
+const MAX_SETTINGS_SIZE = 50_000;
+
 function newId(count: number): string {
 	let s: string = "";
 	for (let i = 0; i < count; i++) {
@@ -36,7 +38,13 @@ export default async (req: Request, context: Context): Promise<Response> => {
 		// There's a small race here (TOCTOU) with checking id uniqueness, but
 		// this is a low traffic endpoint and mistakenly overwriting an id has
 		// low impact.
-		const settings = await req.json() as LatestSavedSettings;
+
+		// Limit the maximum size to avoid abuse.
+		const requestText = await req.text();
+		if (requestText.length > MAX_SETTINGS_SIZE) {
+			return new Response("Settings too large", { status: 413 });
+		}
+		const settings = JSON.parse(requestText) as LatestSavedSettings;
 		const metadata = {
 			created: (new Date()).toISOString(),
 			// We don't actually expire anything yet, but if we need to in the
