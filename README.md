@@ -38,5 +38,5 @@ We save links because it would be unwieldy to store the settings in the URL. Thi
 as a URL shortener for convenience, though users can also create named links.
 
 
-[bun]: bun.sh
-[solidjs]: solidjs.com
+[bun]: http://bun.sh
+[solidjs]: https://solidjs.com
