@@ -2,11 +2,22 @@ import type { Config, Context } from "@netlify/functions";
 import { getStore } from "@netlify/blobs";
 import { DATA_VERSION } from "app/data/format.ts";
 
-export default async (_req: Request, context: Context): Promise<Response> => {
+const CACHE_MAX_AGE: number = 60 * 60 * 24; // 1 day
+
+export default async (req: Request, context: Context): Promise<Response> => {
 	const { date } = context.params;
 
 	const store = getStore("ping-data");
-	const result = await store.getWithMetadata(date, { type: "stream", consistency: "strong" });
+	let etag: string | undefined;
+	{
+		// Only get the first If-None-Match entry, if any
+		const if_none_match = req.headers.get("If-None-Match");
+		let etag_match: RegExpMatchArray | null | undefined;
+		if (if_none_match && (etag_match = if_none_match.match(/"(.*?)"/))) {
+			etag = etag_match[1];
+		}
+	}
+	const result = await store.getWithMetadata(date, { type: "stream", consistency: "strong", etag });
 	const missing = !result;
 	const oldVersion = result && result.metadata["version"] !== DATA_VERSION;
 	const retry = result && result.metadata["retry"] &&
@@ -29,13 +40,32 @@ export default async (_req: Request, context: Context): Promise<Response> => {
 	}
 
 	const headers: Record<string, string> = {
-		"Content-Encoding": "gzip",
-		"Content-Type": "application/json",
+		"Cache-Control": `public, max-age=${CACHE_MAX_AGE}`,
 	};
 
+	// Add cache-related headers
+	const modified_date: string | undefined = result.metadata["date"] as any;
+	if (modified_date) {
+		headers["Last-Modified"] = new Date(modified_date).toUTCString();
+	}
 	if (result.etag) {
 		headers["ETag"] = result.etag;
 	}
+
+	// Check whether we can omit the response
+	if (etag && result.etag === etag) {
+		return new Response(null, { status: 304, headers });
+	}
+	const if_modified_since = req.headers.get("If-Modified-Since");
+	if (modified_date && if_modified_since) {
+		if (new Date(modified_date).getTime() <= new Date(if_modified_since).getTime()) {
+			return new Response(null, { status: 304, headers });
+		}
+	}
+
+	// We're sending the data payload, so add content headers
+	headers["Content-Encoding"] = "gzip";
+	headers["Content-Type"] = "application/json";
 
 	return new Response(result.data, { headers });
 };
