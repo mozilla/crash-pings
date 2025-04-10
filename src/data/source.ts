@@ -153,6 +153,10 @@ async function joinData(allData: UrlFetchedSource[]): Promise<AllPings> {
         const f = field as IndexedStringPingField;
         (pings as any)[f] = pings[f].build();
     }
+    // XXX We don't currently use the minidump hashes, so clear them out to save memory.
+    // They take up enough memory that we might consider dynamically fetching
+    // them or truncating them.
+    (pings.minidump_sha256_hash as any) = [];
     return pings as any;
 }
 
