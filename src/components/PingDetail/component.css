@@ -1,0 +1,27 @@
+.listrow > .stack-index {
+	width: 4ch;
+	text-align: right;
+}
+.listrow > .stack-src {
+	width: 3ch;
+}
+.listrow > .stack-module {
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+	width: 50ch;
+	flex: 1;
+}
+.listrow > .stack-function {
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+	flex: 4;
+}
+.listrow > .stack-error {
+	text-align: center;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	overflow-x: hidden;
+	flex: 1;
+}
