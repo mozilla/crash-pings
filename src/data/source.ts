@@ -202,7 +202,9 @@ function checkAndUpdateEtags(sources: FetchedSource[]) {
         newEtags = undefined;
     }
 
-    if (settings.data_etags && newEtags) {
+    if (!newEtags) return;
+
+    if (settings.data_etags) {
         let mismatch = settings.data_etags.length !== newEtags.length;
         if (!mismatch) {
             for (let i = 0; i < newEtags.length; i++) {
@@ -214,6 +216,10 @@ function checkAndUpdateEtags(sources: FetchedSource[]) {
         }
         if (mismatch) {
             alert("Warning: the source data has changed since the link was created.");
+        } else {
+            // No need to update data_etags (which will cause the settings to
+            // fire a change, even if it's the same data).
+            return;
         }
     }
 
