@@ -81,5 +81,10 @@ export default function Selection(props: {
         }
     });
 
-    return html`<${Layout} column>${() => loaded().components}</div>`;
+    // Add right padding so that, if a scrollbar is shown, it doesn't overlay
+    // on the filter scrollbars or other elements. We don't know how large the
+    // scrollbar will be, so we hope for the best. There doesn't seem to be a
+    // way to force classic scrollbars (with pre-allocated space), which is
+    // upsetting.
+    return html`<${Layout} column style=${{ "padding-right": "12px" }}>${() => loaded().components}</div>`;
 };

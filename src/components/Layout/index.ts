@@ -25,6 +25,7 @@ export default function Layout(props: {
     fill?: number | Marker,
     gap?: number | false,
     frame?: Marker,
+    style?: Record<string, string>,
     element?: string,
     children: any,
 }) {
@@ -38,7 +39,7 @@ export default function Layout(props: {
         };
     };
     const style = () => {
-        const ret: { [key: string]: string } = {};
+        const ret: Record<string, string> = props.style ?? {};
         if (props.size) {
             ret["flex-basis"] = props.size;
             ret["flex-grow"] = "0";
