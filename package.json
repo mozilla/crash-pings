@@ -7,7 +7,7 @@
     "url": "git+https://github.com/mozilla/crash-pings.git"
   },
   "bugs": {
-    "url": "https://github.com/mozilla/crash-pings/issues"
+    "url": "https://bugzilla.mozilla.org/buglist.cgi?product=Crash%20Pings&component=Website&resolution=---"
   },
   "description": "Crash ping website.",
   "homepage": "https://github.com/mozilla/crash-pings#readme",
