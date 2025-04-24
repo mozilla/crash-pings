@@ -128,18 +128,18 @@ export default function App() {
                             <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature}><//>
                         <//>
                         <${Show} when=${selectedSignature}>
-                            <${Layout} frame size="content">
+                            <${Layout} frame size="content" "aria-live"="polite">
                                 <${SignatureDetail} signature=${selectedSignature} filterInfo=${filterInfo}><//>
                             <//>
                         <//>
                     <//>
                     <${Layout} column>
                         <${Show} when=${selectedSignature}>
-                            <${Layout} frame>
+                            <${Layout} frame "aria-live"="polite">
                                 <${Pings} signature=${selectedSignature} selectedPing=${setSelectedPing}><//>
                             <//>
                             <${Show} when=${selectedPing}>
-                                <${Layout} frame>
+                                <${Layout} frame "aria-live"="polite">
                                     <${PingDetail} ping=${selectedPing}><//>
                                 <//>
                             <//>

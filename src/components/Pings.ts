@@ -59,25 +59,25 @@ export default function Pings(props: {
     }));
 
     const renderPingInfo = (info: PingInfo) => html`
-        <div class="listrow" classList=${() => info.selectedClassList} onClick=${(_: Event) => selectPing(info)}>
-            <div class="ping-date">${pingData.date.getPingString(info.ping)}</div>
-            <div class="ping-type">${pingData.type.getPingString(info.ping)}</div>
-            <div class="ping-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
+        <div role="row" class="listrow" classList=${() => info.selectedClassList} onClick=${(_: Event) => selectPing(info)}>
+            <div role="cell" class="ping-date">${pingData.date.getPingString(info.ping)}</div>
+            <div role="cell" class="ping-type">${pingData.type.getPingString(info.ping)}</div>
+            <div role="cell" class="ping-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
         </div>
     `;
 
     return html`
         <${Layout} column>
             <${Layout} size="content">
-                <h2>Pings</h2>
-                <div class="listrow listheader">
-                    <div class="ping-date">Date</div>
-                    <div class="ping-type">Crash Type</div>
-                    <div class="ping-reason">Reason</div>
+                <h3>Pings</h3>
+                <div role="row" class="listrow listheader">
+                    <div role="columnheader" class="ping-date">Date</div>
+                    <div role="columnheader" class="ping-type">Crash Type</div>
+                    <div role="columnheader" class="ping-reason">Reason</div>
                 </div>
             <//>
             <${Layout} fill>
-                <${VList} data=${pingInfos}>${renderPingInfo}<//>
+                <${VList} role="rowgroup" data=${pingInfos}>${renderPingInfo}<//>
             <//>
         <//>
     `;

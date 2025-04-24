@@ -1,4 +1,5 @@
 import html from "solid-js/html";
+import { splitProps, type JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import "./layout.css";
 
@@ -28,7 +29,7 @@ export default function Layout(props: {
     style?: Record<string, string>,
     element?: string,
     children: any,
-}) {
+} & JSX.AriaAttributes) {
     const element = props.element ?? "div";
     const classes = () => {
         return {
@@ -56,5 +57,8 @@ export default function Layout(props: {
         }
         return ret;
     };
-    return html`<${Dynamic} component=${element} style=${style} classList=${classes}>${props.children}<//>`;
+
+    const [forwarded, _] = splitProps(props, Object.keys(props).filter(k => k.startsWith("aria-")) as (keyof typeof props)[]);
+
+    return html`<${Dynamic} component=${element} style=${style} classList=${classes} ...${forwarded}>${props.children}<//>`;
 }

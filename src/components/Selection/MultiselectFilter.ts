@@ -333,7 +333,7 @@ export class MultiselectFilterSpec implements FilterSpec {
         };
         onMount(() => selectEl.dispatchEvent(new Event('change')));
 
-        const fieldid = () => `filter-${prettyName().replace(" ", "-")}`;
+        const fieldid = () => `filter-${prettyName().replaceAll(" ", "-")}`;
 
         return html`<div class="filter">
             <label onClick=${(_: Event) => selectAll()} for=${fieldid} title="Click to select all" style="cursor:pointer">
