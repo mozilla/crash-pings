@@ -29,7 +29,7 @@ export default function Layout(props: {
     style?: Record<string, string>,
     element?: string,
     children: any,
-} & JSX.AriaAttributes) {
+} & JSX.AriaAttributes & Pick<JSX.HTMLAttributes<HTMLElement>, "role">) {
     const element = props.element ?? "div";
     const classes = () => {
         return {
@@ -58,7 +58,7 @@ export default function Layout(props: {
         return ret;
     };
 
-    const [forwarded, _] = splitProps(props, Object.keys(props).filter(k => k.startsWith("aria-")) as (keyof typeof props)[]);
+    const [forwarded, _] = splitProps(props, Object.keys(props).filter(k => k === "role" || k.startsWith("aria-")) as (keyof typeof props)[]);
 
     return html`<${Dynamic} component=${element} style=${style} classList=${classes} ...${forwarded}>${props.children}<//>`;
 }

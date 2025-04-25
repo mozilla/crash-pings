@@ -67,7 +67,7 @@ export default function Pings(props: {
     `;
 
     return html`
-        <${Layout} column>
+        <${Layout} column role="table">
             <${Layout} size="content">
                 <h3>Pings</h3>
                 <div role="row" class="listrow listheader">

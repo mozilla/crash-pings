@@ -85,7 +85,7 @@ export default function Link(_props: {}) {
 
     return html`
         <button style="aspect-ratio: 1" onPointerdown=${down} onPointerup=${up} aria-haspopup="dialog" title="Create a link to the current page. Press and hold to open advanced settings.">
-            <span aria-hidden class="fa-solid fa-link"></span>
+            <span aria-hidden="true" class="fa-solid fa-link"></span>
         </button>
         <dialog ref=${(e: HTMLDialogElement) => dialog = e} onClick=${checkCloseDialog} id="link-settings" class="frame">
             <div>

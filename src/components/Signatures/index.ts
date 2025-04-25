@@ -127,15 +127,15 @@ export default function Signatures(props: {
             <div role="cell" class="rank">${idx + 1}</div>
             <div role="cell" class="percent">${sig.percentage.toFixed(2)}%</div>
             <div role="cell" class="signature"><tt>${sig.signature}</tt></div>
-            <div role="cell" class="copy"><span role="button" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden class="icon fas fa-copy copyicon"></span></span></div>
-            <div role="cell" class="search"><a href=${url} target="_blank" title="Search for signature"><span aria-hidden class="icon fas fa-signature"></span></a></div>
+            <div role="cell" class="copy"><span role="button" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden="true" class="icon fas fa-copy copyicon"></span></span></div>
+            <div role="cell" class="search"><a href=${url} target="_blank" title="Search for signature"><span aria-hidden="true" class="icon fas fa-signature"></span></a></div>
             <div role="cell" class="clients">${sig.clientCount}</div>
             <div role="cell" class="count">${sig.pingCount}</div>
           </div>
         `;
     };
 
-    return html`<${Layout} column gap=${false}>
+    return html`<${Layout} column gap=${false} role="table">
         <${Layout} size="content">
             ${header}
             <div role="row" class="listheader listrow">
