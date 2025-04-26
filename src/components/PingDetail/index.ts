@@ -5,17 +5,31 @@ import Layout from "app/components/Layout";
 import { allPings } from "app/data/source";
 import "./component.css";
 
+type JavaExceptionStack = {
+    file?: string,
+    line?: number,
+    class_name?: string,
+    method_name?: string,
+    is_native?: boolean,
+}[];
+
+type JavaExceptionV0 = {
+    messages?: string[],
+    stack?: JavaExceptionStack,
+};
+
+type JavaExceptionV1 = {
+    throwables?: {
+        message?: string,
+        typeName?: string,
+        stack?: JavaExceptionStack,
+    }[]
+};
+
+type JavaException = JavaExceptionV0 | JavaExceptionV1;
+
 type StackDetails = {
-    java_exception: {
-        messages?: string[],
-        stack?: {
-            file?: string,
-            line?: number,
-            class_name?: string,
-            method_name?: string,
-            is_native?: boolean,
-        }[]
-    } | null,
+    java_exception: JavaException | null,
     stack: {
         function: string | null,
         function_offset: string | null,
@@ -111,33 +125,43 @@ export default function PingDetail(props: {
                 ` as Node);
                 frameIndex++;
             }
-        } else if (details.java_exception?.stack?.length) {
-            const stack = details.java_exception.stack;
-            let frameIndex = 0;
-            for (const s of stack) {
-                let loc = "(unknown)";
-                if (s.file) {
-                    loc = s.file;
-                    if (s.line) {
-                        loc += ":" + s.line;
+        } else if (details.java_exception) {
+            let stack: JavaExceptionStack | undefined;
+            if (("messages" in details.java_exception || "stack" in details.java_exception)) {
+                // JavaExceptionV0
+                stack = details.java_exception.stack;
+            } else if ("throwables" in details.java_exception && details.java_exception.throwables?.length) {
+                // JavaExceptionV1
+                stack = details.java_exception.throwables[0].stack;
+            }
+
+            if (stack) {
+                let frameIndex = 0;
+                for (const s of stack) {
+                    let loc = "(unknown)";
+                    if (s.file) {
+                        loc = s.file;
+                        if (s.line) {
+                            loc += ":" + s.line;
+                        }
                     }
-                }
-                let mod = "(unknown)";
-                if (s.class_name) {
-                    mod = s.class_name;
-                    if (s.method_name) {
-                        mod += "." + s.method_name;
+                    let mod = "(unknown)";
+                    if (s.class_name) {
+                        mod = s.class_name;
+                        if (s.method_name) {
+                            mod += "." + s.method_name;
+                        }
                     }
+                    stacklines.push(html`
+                        <div class="listrow">
+                            <div class="stack-index">${frameIndex}</div>
+                            <div class="stack-src"></div>
+                            <div class="stack-module">${mod}</div>
+                            <div class="stack-function">${loc}</div>
+                        </div>
+                    ` as Node);
+                    frameIndex++;
                 }
-                stacklines.push(html`
-                    <div class="listrow">
-                        <div class="stack-index">${frameIndex}</div>
-                        <div class="stack-src"></div>
-                        <div class="stack-module">${mod}</div>
-                        <div class="stack-function">${loc}</div>
-                    </div>
-                ` as Node);
-                frameIndex++;
             }
         }
 
