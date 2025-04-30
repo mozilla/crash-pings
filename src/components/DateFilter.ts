@@ -21,6 +21,9 @@ export default function DateFilter(props: {
         const end = untrack(endDate);
         settings.dates.start = start;
         settings.dates.end = end;
+        // We clear the data etags since we expect them to change, and they are
+        // tied to a warning (used for links that might be stale).
+        settings.data_etags = undefined;
         let d = start;
         while (d <= end) {
             dates.push(dateString(d));
