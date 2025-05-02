@@ -1,12 +1,12 @@
 with
 desktop as
     (select
-        client_info.app_channel as channel,
+        metrics.string.crash_app_channel as channel,
         metrics.string.crash_process_type as process,
         metrics.string_list.crash_utility_actors_name[SAFE_OFFSET(0)] as ipc_actor,
         client_info.client_id as clientid,
         document_id as crashid,
-        client_info.app_display_version as version,
+        metrics.string.crash_app_display_version as version,
         normalized_os as os,
         IF(normalized_os = 'Windows', CONCAT(normalized_os_version, "@", client_info.windows_build_number), normalized_os_version) as osversion,
         client_info.architecture as arch,
@@ -15,7 +15,7 @@ desktop as
         crash_type as type,
         metrics.string.crash_minidump_sha256_hash as minidump_sha256_hash,
         metrics.boolean.crash_startup as startup_crash,
-        client_info.app_build as build_id,
+        metrics.string.crash_app_build as build_id,
         signature,
     from moz-fx-data-shared-prod.crash_ping_ingest_external.ingest_output
     join firefox_desktop.desktop_crashes using (document_id, submission_timestamp)
@@ -24,12 +24,12 @@ desktop as
     ),
 android as
     (select
-        client_info.app_channel as channel,
+        metrics.string.crash_app_channel as channel,
         metrics.string.crash_process_type as process,
         STRING(NULL) as ipc_actor,
         client_info.client_id as clientid,
         document_id as crashid,
-        client_info.app_display_version as version,
+        metrics.string.crash_app_display_version as version,
         normalized_os as os,
         normalized_os_version as osversion,
         client_info.architecture as arch,
@@ -38,7 +38,7 @@ android as
         crash_type as type,
         metrics.string.crash_minidump_sha256_hash as minidump_sha256_hash,
         metrics.boolean.crash_startup as startup_crash,
-        client_info.app_build as build_id,
+        metrics.string.crash_app_build as build_id,
         signature,
     from moz-fx-data-shared-prod.crash_ping_ingest_external.ingest_output 
     join fenix.crash using (document_id, submission_timestamp)
