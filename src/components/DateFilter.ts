@@ -57,11 +57,13 @@ export default function DateFilter(props: {
         <input type="date"
             onChange=${startChanged}
             value=${() => dateString(startDate())}
+            aria-label="Start date"
             >
         <span>to</span>
         <input type="date"
             onChange=${endChanged}
             value=${() => dateString(endDate())}
+            aria-label="End date (inclusive)"
             >
         <${Show} when=${showLoadButton}>
             <button onClick=${(_: Event) => updateDates()}>Load</button>

@@ -127,7 +127,7 @@ export default function Signatures(props: {
             <div role="cell" class="rank">${idx + 1}</div>
             <div role="cell" class="percent">${sig.percentage.toFixed(2)}%</div>
             <div role="cell" class="signature"><tt>${sig.signature}</tt></div>
-            <div role="cell" class="copy"><span role="button" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden="true" class="icon fas fa-copy copyicon"></span></span></div>
+            <div role="cell" class="copy"><span role="button" tabindex="0" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden="true" class="icon fas fa-copy copyicon"></span></span></div>
             <div role="cell" class="search"><a href=${url} target="_blank" title="Search for signature"><span aria-hidden="true" class="icon fas fa-signature"></span></a></div>
             <div role="cell" class="clients">${sig.clientCount}</div>
             <div role="cell" class="count">${sig.pingCount}</div>
@@ -142,10 +142,10 @@ export default function Signatures(props: {
                 <div role="columnheader" class="rank">rank</div>
                 <div role="columnheader" class="percent">%</div>
                 <div role="columnheader" class="signature">signature</div>
-                <div role="columnheader" class="copy"></div>
-                <div role="columnheader" class="search"></div>
+                <div role="columnheader" class="copy" inert></div>
+                <div role="columnheader" class="search" inert></div>
                 <div role="columnheader" class="clients">
-                    <span role="button" title="Sort by client count"
+                    <span role="button" tabindex="0" title="Sort by client count"
                         onClick=${(_: Event) => settings.sort = "clients"}
                         classList=${selectOn("clients")}
                         >
@@ -153,7 +153,7 @@ export default function Signatures(props: {
                     </span>
                 </div>
                 <div role="columnheader" class="count">
-                    <span role="button" title="Sort by ping count"
+                    <span role="button" tabindex="0" title="Sort by ping count"
                         onClick=${(_: Event) => settings.sort = "pings"}
                         classList=${selectOn("pings")}
                         >
