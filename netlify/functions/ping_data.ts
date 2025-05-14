@@ -7,6 +7,10 @@ const CACHE_MAX_AGE: number = 60 * 60 * 24; // 1 day
 export default async (req: Request, context: Context): Promise<Response> => {
 	const { date } = context.params;
 
+	if (!date.match(/\d{4}-\d{2}-\d{2}/)) {
+		return new Response(null, { status: 400 });
+	}
+
 	const store = getStore("ping-data");
 	let etag: string | undefined;
 	{
