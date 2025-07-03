@@ -15,6 +15,7 @@ export class SignatureInfo extends SingleSelectable(Object) {
     pings: Ping[] = [];
     clientCount: number = 0;
     percentage: number = 0;
+    rank: number = 0;
 
     get pingCount() { return this.pings.length; }
 
@@ -26,7 +27,33 @@ export class SignatureInfo extends SingleSelectable(Object) {
 
 type SortBy = "clients" | "pings";
 
-export default function Signatures(props: {
+function renderSignature(selectSignature?: ((sig: SignatureInfo | undefined) => void)) {
+    return (sig: SignatureInfo) => {
+        const url = `https://crash-stats.mozilla.org/search/?signature=~${encodeURIComponent(sig.signature)}`;
+        return html`
+        <div role="row" class="listrow"
+            onClick=${selectSignature ? (_: Event) => selectSignature(sig) : undefined}
+            classList=${selectSignature ? () => sig.selectedClassList : undefined}>
+            <div role="cell" class="rank">${sig.rank}</div>
+            <div role="cell" class="percent">${sig.percentage.toFixed(2)}%</div>
+            <div role="cell" class="signature"><tt>${sig.signature}</tt></div>
+            <div role="cell" class="copy">
+                <span role="button" tabindex="0" title="Copy signature to clipboard" on:click=${(e: Event) => { e.stopPropagation(); copyText(sig.signature) }}>
+                    <span aria-hidden="true" class="icon fas fa-copy copyicon"></span>
+                </span>
+            </div>
+            <div role="cell" class="search">
+                <a on:click=${(e: Event) => e.stopPropagation()} href=${url} target="_blank" title="Search for signature">
+                    <span aria-hidden="true" class="icon fas fa-signature"></span>
+                </a>
+            </div>
+            <div role="cell" class="clients">${sig.clientCount}</div>
+            <div role="cell" class="count">${sig.pingCount}</div>
+        </div>`;
+    };
+}
+
+function Signatures(props: {
     pings: Ping[],
     selectedSignature?: (info: SignatureInfo | undefined) => void,
 }) {
@@ -100,7 +127,9 @@ export default function Signatures(props: {
             sig.percentage = sortVal(sig) * 100 / percTotal;
         }
 
-        return signatures.sort((a, b) => b.percentage - a.percentage);
+        signatures.sort((a, b) => b.percentage - a.percentage);
+        signatures.forEach((sig, ind) => sig.rank = ind + 1);
+        return signatures;
     },
         undefined,
         // We always return the same value (the signatures array), but modify
@@ -118,21 +147,6 @@ export default function Signatures(props: {
 
     const selectOn = (which: SortBy) => () => {
         return { "selected": settings.sort == which };
-    };
-
-    const renderSignature = (sig: SignatureInfo, idx: number) => {
-        const url = `https://crash-stats.mozilla.org/search/?signature=~${encodeURIComponent(sig.signature)}`;
-        return html`
-          <div role="row" onClick=${(_: Event) => selectSignature(sig)} class="listrow" classList=${() => sig.selectedClassList}>
-            <div role="cell" class="rank">${idx + 1}</div>
-            <div role="cell" class="percent">${sig.percentage.toFixed(2)}%</div>
-            <div role="cell" class="signature"><tt>${sig.signature}</tt></div>
-            <div role="cell" class="copy"><span role="button" tabindex="0" title="Copy signature to clipboard" onClick=${(_: Event) => copyText(sig.signature)}><span aria-hidden="true" class="icon fas fa-copy copyicon"></span></span></div>
-            <div role="cell" class="search"><a href=${url} target="_blank" title="Search for signature"><span aria-hidden="true" class="icon fas fa-signature"></span></a></div>
-            <div role="cell" class="clients">${sig.clientCount}</div>
-            <div role="cell" class="count">${sig.pingCount}</div>
-          </div>
-        `;
     };
 
     return html`<${Layout} column gap=${false} role="table">
@@ -163,7 +177,27 @@ export default function Signatures(props: {
             </div>
         <//>
         <${Layout} fill>
-            <${VList} role="rowgroup" data=${sortedSignatures}>${renderSignature}<//>
+            <${VList} role="rowgroup" data=${sortedSignatures}>${renderSignature(selectSignature)}<//>
         <//>
     <//>`;
 }
+
+Signatures.Summary = (props: {
+    selectedSignature: SignatureInfo | undefined,
+}) => {
+    const render = renderSignature();
+    return html`<div role="table" class="condense">
+        <div role="row" class="listheader listrow">
+            <div role="columnheader" class="rank">rank</div>
+            <div role="columnheader" class="percent">%</div>
+            <div role="columnheader" class="signature">signature</div>
+            <div role="columnheader" class="copy" inert></div>
+            <div role="columnheader" class="search" inert></div>
+            <div role="columnheader" class="clients">clients</div>
+            <div role="columnheader" class="count">count</div>
+        </div>
+        ${() => props.selectedSignature ? render(props.selectedSignature) : undefined}
+    </div>`;
+};
+
+export default Signatures;
