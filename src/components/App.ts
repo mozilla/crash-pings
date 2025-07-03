@@ -1,6 +1,5 @@
 import { createSignal, Suspense, Show, type JSX, createEffect } from "solid-js";
 import html from "solid-js/html";
-import { render, type MountableElement } from "solid-js/web";
 import DateFilter from "./DateFilter";
 import Selection, { FiltersForField, MultiselectFilter } from "./Selection";
 import type { FilterInfo } from "./Selection";
@@ -103,11 +102,6 @@ function isWideWindow() {
     return window.innerWidth > 100 * EM_SIZE;
 }
 
-function sharedComponent(component: () => JSX.Element) {
-    let c: JSX.Element | undefined;
-    return (parent: MountableElement) => render(() => c ??= component(), parent);
-}
-
 export default function App() {
     const [selectedPings, setSelectedPings] = createSignal([]);
     const [selectedSignature, setSelectedSignature] = createSignal<SignatureInfo>();
@@ -137,7 +131,7 @@ export default function App() {
     // resize and the layout changes, we can reuse the components rather than
     // re-rendering. This also has the nice side effect of making the layouts
     // easy to read and compare.
-    const selection = sharedComponent(() => html`
+    const selection = () => html`
         <${Selection} pings=${allPings} selectedPings=${setSelectedPings} filterInfo=${setFilterInfo}>
             <${MultiselectFilter} field="channel" />
             <${MultiselectFilter} field="process" />
@@ -148,41 +142,41 @@ export default function App() {
             <${FiltersForField} field="os">${osVersionFilter}<//>
             <${MultiselectFilter} field="arch" />
         <//>
-    `);
-    const signatures = sharedComponent(() => html`
+    `;
+    const signatures = () => html`
         <${Signatures} pings=${selectedPings} sort="clients" selectedSignature=${setSelectedSignature} />
-    `);
-    const signatureDetail = sharedComponent(() => html`
+    `;
+    const signatureDetail = () => html`
         <${Show} when=${selectedSignature} keyed>
             ${(sig: SignatureInfo) => html`<${SignatureDetail} signature=${sig} filterInfo=${filterInfo} hideHeader=${() => !wideWindow()} />`}
         <//>
-    `);
-    const pings = sharedComponent(() => html`
+    `;
+    const pings = () => html`
         <${Show} when=${selectedSignature} keyed>
             ${(sig: SignatureInfo) => html`<${Pings} signature=${sig} selectedPing=${setSelectedPing} />`}
         <//>
-    `);
-    const pingDetail = sharedComponent(() => html`
+    `;
+    const pingDetail = () => html`
         <${Show} when=${selectedPing} keyed>
             ${(ping: PingInfo) => html`<${PingDetail} ping=${ping} />`}
         <//>
-    `);
+    `;
 
     function wideLayout() {
         return html`
             <${Layout} row element="main">
-                <${Layout} ref=${selection} size="14em" />
+                <${Layout} size="14em">${selection}<//>
                 <${Layout} column>
-                    <${Layout} ref=${signatures} frame />
+                    <${Layout} frame>${signatures}<//>
                     <${Show} when=${selectedSignature}>
-                        <${Layout} ref=${signatureDetail} frame size="content" aria-live="polite" />
+                        <${Layout} frame size="content" aria-live="polite">${signatureDetail}<//>
                     <//>
                 <//>
                 <${Layout} column>
                     <${Show} when=${selectedSignature}>
-                        <${Layout} ref=${pings} frame aria-live="polite" />
+                        <${Layout} frame aria-live="polite">${pings}<//>
                         <${Show} when=${selectedPing}>
-                            <${Layout} ref=${pingDetail} frame aria-live="polite" />
+                            <${Layout} frame aria-live="polite">${pingDetail}<//>
                         <//>
                     <//>
                 <//>
@@ -243,7 +237,7 @@ export default function App() {
                 <${SummarizeDisplayed} level=${Displayed.Filters}>
                     <${Selection.Summary} filterInfo=${filterInfo} />
                     <${Layout} column>
-                        <${Layout} ref=${selection} />
+                        <${Layout}>${selection}<//>
                         <${Layout} row size="content">
                             <button style="flex: auto; padding: 8px" onClick=${(_e: Event) => setDisplayed(Displayed.Signatures)}>Show Signatures</button>
                         <//>
@@ -251,18 +245,18 @@ export default function App() {
                 <//>
                 <${SummarizeDisplayed} level=${Displayed.Signatures}>
                     <${Signatures.Summary} selectedSignature=${selectedSignature} />
-                    <${Layout} ref=${signatures} frame />
+                    <${Layout} frame>${signatures}<//>
                 <//>
                 <${SummarizeDisplayed} level=${Displayed.SignatureDetail}>
                     <${Pings.Summary} selectedPing=${selectedPing} />
                     ${() => html`
-                        <${Layout} ref=${signatureDetail} frame size="content" aria-live="polite" />
-                        <${Layout} ref=${pings} frame aria-live="polite" />
+                        <${Layout} frame size="content" aria-live="polite">${signatureDetail}<//>
+                        <${Layout} frame aria-live="polite">${pings}<//>
                     `}
                 <//>
                 <${SummarizeDisplayed} level=${Displayed.PingDetail}>
                     <div></div>
-                    ${() => html`<${Layout} ref=${pingDetail} frame aria-live="polite" />`}
+                    ${() => html`<${Layout} frame aria-live="polite">${pingDetail}<//>`}
                 <//>
             <//>
         `;
