@@ -18,8 +18,6 @@ async function build(): Promise<boolean> {
          splitting: !DEV,
          minify: !DEV,
          sourcemap: DEV ? "linked" : "none",
-         html: true,
-         experimentalCss: true,
          throw: true,
       });
       return result.success;

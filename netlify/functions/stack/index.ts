@@ -11,6 +11,7 @@ where document_id = @id and DATE(submission_timestamp) = @date
 `;
 
 const BIGQUERY_PROJECT_ID = "moz-fx-data-shared-prod";
+const CACHE_MAX_AGE: number = 60 * 60 * 24 * 7; // 7 days, though in practice this data will never change
 
 export default async (_req: Request, context: Context): Promise<Response> => {
 	const { date, id } = context.params;
@@ -41,6 +42,7 @@ export default async (_req: Request, context: Context): Promise<Response> => {
 
 	return new Response(data, {
 		headers: {
+			"Cache-Control": `public, max-age=${CACHE_MAX_AGE}`,
 			"Content-Type": "application/json",
 		}
 	});

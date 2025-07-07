@@ -9,6 +9,7 @@ import "./component.css";
 export default function SignatureDetail(props: {
     signature: SignatureInfo,
     filterInfo: FilterInfo,
+    hideHeader?: boolean,
 }) {
     const sparkline = createMemo(() => {
         const pingData = allPings();
@@ -43,9 +44,16 @@ export default function SignatureDetail(props: {
             `;
         });
 
-    return html`
-        <h3><tt>${() => props.signature.signature}</tt></h3>
+    const header = () => {
+        if (props.hideHeader !== undefined && props.hideHeader !== null && props.hideHeader !== false) {
+            return undefined;
+        }
+        return html`<h3><tt>${() => props.signature.signature}</tt></h3>`;
+    };
+
+    return html`<div>
+        ${header}
         ${sparkline}
         ${filterCounts}
-    `;
+    </div>`;
 };

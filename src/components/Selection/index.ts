@@ -13,9 +13,10 @@ export { FiltersForField, MultiselectFilter };
 
 export type FilterInfo = {
     countFilterValues(pings: Ping[]): { filterLabel: string, counts: { label: string, count: number }[] }[],
+    summary(): string,
 };
 
-export default function Selection(props: {
+function Selection(props: {
     pings: AllPings,
     selectedPings: (selected: Ping[]) => void,
     filterInfo?: (filterInfo: FilterInfo) => void,
@@ -76,6 +77,24 @@ export default function Selection(props: {
                         ret.push({ filterLabel: f.label, counts });
                     }
                     return ret;
+                },
+                summary(): string {
+                    const filters = loaded().filters
+                        .map(f => {
+                            if (f.settings?.selected === undefined) {
+                                return undefined;
+                            }
+                            return { label: f.label, selected: f.settings.selected };
+                        })
+                        .filter(f => f !== undefined);
+                    const s = filters.map(f => {
+                        const values = f.selected.filter(s => s !== null);
+                        if (values.length === 1) {
+                            return `${f.label} = ${values[0]}`;
+                        }
+                        return `${f.label} = [${values.join("|")}]`;
+                    }).join(", ");
+                    return s.length ? s : "None";
                 }
             });
         }
@@ -88,3 +107,11 @@ export default function Selection(props: {
     // upsetting.
     return html`<${Layout} column style=${{ "padding-right": "12px" }}>${() => loaded().components}</div>`;
 };
+
+Selection.Summary = (props: {
+    filterInfo: FilterInfo | undefined,
+}) => {
+    return html`<span><b>Filters:</b>&nbsp;${() => props.filterInfo?.summary()}</span>`;
+};
+
+export default Selection;
