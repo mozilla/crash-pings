@@ -6,7 +6,7 @@ select
 	TO_JSON_STRING(stack) as stack,
 	TO_JSON_STRING(metrics.object.crash_java_exception) as java_exception
 from moz-fx-data-shared-prod.crash_ping_ingest_external.ingest_output
-left join fenix.crash using (document_id, submission_timestamp)
+left join telemetry.firefox_crashes using (document_id, submission_timestamp)
 where document_id = @id and DATE(submission_timestamp) = @date
 `;
 
