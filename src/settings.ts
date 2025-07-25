@@ -15,6 +15,7 @@ export type Settings = {
     data_etags: string[] | undefined,
     selection: { [key: string]: MultiselectSettings },
     signature: string | undefined,
+    signatureFilter: string | undefined,
     pingCrashId: string | undefined,
     sort: "clients" | "pings",
     meta: {
@@ -26,6 +27,7 @@ export type Settings = {
         storeEtags: boolean,
         storeSelection: boolean,
         storeSignature: boolean,
+        storeSignatureFilter: boolean,
         storePing: boolean,
         storeSort: boolean,
         storeMeta: boolean,
@@ -51,6 +53,7 @@ interface SavedSettingsV1 extends SavedSettings {
     data_etags?: string[],
     selection?: { [key: string]: MultiselectSettings },
     signature?: string,
+    signatureFilter?: string,
     pingCrashId?: string,
     sort?: "clients" | "pings",
     meta?: {
@@ -60,6 +63,7 @@ interface SavedSettingsV1 extends SavedSettings {
         storeEtags: boolean,
         storeSelection: boolean,
         storeSignature: boolean,
+        storeSignatureFilter: boolean,
         storePing: boolean,
         storeSort: boolean,
         storeMeta: boolean,
@@ -103,6 +107,7 @@ function loadSettings(settings?: SavedSettings): Settings {
             data_etags: s.data_etags,
             selection: s.selection ?? {},
             signature: s.signature,
+            signatureFilter: s.signatureFilter,
             pingCrashId: s.pingCrashId,
             sort: s.sort ?? "clients",
             meta: s.meta ?? {
@@ -112,6 +117,7 @@ function loadSettings(settings?: SavedSettings): Settings {
                 storeEtags: true,
                 storeSelection: true,
                 storeSignature: true,
+                storeSignatureFilter: true,
                 storePing: true,
                 storeSort: true,
                 storeMeta: true,
@@ -162,6 +168,9 @@ function saveSettings(settings: Settings): LatestSavedSettings {
         if (settings.meta.storePing) {
             s.pingCrashId = settings.pingCrashId;
         }
+    }
+    if (settings.meta.storeSignatureFilter) {
+        s.signatureFilter = settings.signatureFilter;
     }
     if (settings.meta.storeSort) {
         s.sort = settings.sort;

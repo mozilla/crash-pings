@@ -1,7 +1,7 @@
 import type { Ping } from "app/data/source";
 import type { StringIndex } from "app/data/format";
 import { allPings } from "app/data/source";
-import { createMemo, createEffect, on, untrack } from "solid-js";
+import { createMemo, createEffect, createSignal, on, untrack } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "app/components/Selectable";
 import Layout from "app/components/Layout";
@@ -138,6 +138,17 @@ function Signatures(props: {
         { equals: false }
     );
 
+    const filteredSignatures = createMemo(() => {
+        const sigs = sortedSignatures();
+        const filter = settings.signatureFilter;
+        if (filter) {
+            const f = filter.toLocaleLowerCase();
+            return sigs.filter(s => s.signature.toLocaleLowerCase().indexOf(f) !== -1);
+        } else {
+            return sigs;
+        }
+    });
+
     const header = () => {
         const { signatures, totalPings, totalClients } = processed();
         return html`<h2>
@@ -149,9 +160,18 @@ function Signatures(props: {
         return { "selected": settings.sort == which };
     };
 
+    const signatureFilterChange = (e: Event) => {
+        const value = (e.currentTarget as HTMLInputElement).value;
+        settings.signatureFilter = value ? value : undefined;
+    };
+
     return html`<${Layout} column gap=${false} role="table">
-        <${Layout} size="content">
+        <${Layout} column size="content">
             ${header}
+            <${Layout} row size="content" element="label" style=${{ "align-items": "baseline" }}>
+                Filter signatures:
+                <input type="search" value=${() => settings.signatureFilter ?? ""} onInput=${signatureFilterChange} />
+            <//>
             <div role="row" class="listheader listrow">
                 <div role="columnheader" class="rank">rank</div>
                 <div role="columnheader" class="percent">%</div>
@@ -177,7 +197,7 @@ function Signatures(props: {
             </div>
         <//>
         <${Layout} fill>
-            <${VList} role="rowgroup" data=${sortedSignatures}>${renderSignature(selectSignature)}<//>
+            <${VList} role="rowgroup" data=${filteredSignatures}>${renderSignature(selectSignature)}<//>
         <//>
     <//>`;
 }

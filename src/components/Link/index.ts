@@ -48,6 +48,7 @@ export default function Link(_props: {}) {
             storeEtags: true,
             storeSelection: true,
             storeSignature: true,
+            storeSignatureFilter: true,
             storePing: true,
             storeSort: true,
             storeMeta: true,
@@ -98,6 +99,7 @@ export default function Link(_props: {}) {
                     <${Checkbox} field="storeEtags" title="When loaded, a warning will be shown if the ping data sources have changed.">Data source hashes<//>
                     <${Checkbox} field="storeSelection">Selected filters<//>
                     <${Checkbox} field="storeSort">Signature sorting<//>
+                    <${Checkbox} field="storeSignatureFilter">Signature filter<//>
                     <${Checkbox} field="storeSignature">Selected signature<//>
                     <${Show} when=${() => settings.meta.storeSignature}>
                         <${Checkbox} field="storePing">Selected ping<//>
