@@ -15,7 +15,7 @@
   "type": "module",
   "scripts": {
     "type-check": "tsc --noEmit; tsc --noEmit -p src; tsc --noEmit -p netlify/functions",
-    "dev": "bunx netlify-cli@19.1.5 dev",
+    "dev": "bunx netlify-cli dev",
     "build": "bun run bun/build.ts",
     "dist": "NODE_ENV=production bun run build"
   },
