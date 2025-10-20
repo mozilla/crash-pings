@@ -26,8 +26,12 @@ export default async (req: Request, context: Context): Promise<Response> => {
 	const result = await store.getWithMetadata(date, { type: "stream", consistency: "strong", etag });
 	const missing = !result;
 	const oldVersion = result && result.metadata["version"] !== DATA_VERSION;
-	const retry = result && result.metadata["retry"] &&
-		Date.now() >= (result.metadata["retry"] as number);
+
+	let maxAge = CACHE_MAX_AGE;
+	if (result && result.metadata["retry"]) {
+		maxAge = Math.floor(((result.metadata["retry"] as number) - Date.now()) / 1000);
+	}
+	const retry = maxAge <= 0;
 
 	if (missing || oldVersion || retry) {
 		// The background function will set a date key in ping-data-request;
@@ -45,8 +49,10 @@ export default async (req: Request, context: Context): Promise<Response> => {
 		});
 	}
 
+	console.assert(maxAge > 0, "max-age not positive");
+
 	const headers: Record<string, string> = {
-		"Cache-Control": `public, max-age=${CACHE_MAX_AGE}`,
+		"Cache-Control": `public, max-age=${maxAge}`,
 	};
 
 	// Add cache-related headers
