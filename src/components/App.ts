@@ -32,6 +32,7 @@ function osVersionName(os: string): ((version: string) => string | undefined) | 
             "22.": 'macOS 13 "Ventura"',
             "23.": 'macOS 14 "Sonoma"',
             "24.": 'macOS 15 "Sequoia"',
+            "25.": 'macOS 26 "Tahoe"',
         },
         "Windows": {
             "5.1": 'Windows XP',
