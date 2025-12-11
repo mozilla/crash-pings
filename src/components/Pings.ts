@@ -23,6 +23,7 @@ function renderPingInfo(selectPing?: (ping: PingInfo | undefined) => void) {
             onClick=${selectPing ? (_: Event) => selectPing(info) : undefined}
             classList=${selectPing ? () => info.selectedClassList : undefined}>
             <div role="cell" class="ping-date">${pingData.date.getPingString(info.ping)}</div>
+            <div role="cell" class="ping-build">${pingData.build_id.getPingString(info.ping)}</div>
             <div role="cell" class="ping-type">${pingData.type.getPingString(info.ping)}</div>
             <div role="cell" class="ping-reason">${pingData.reason.getPingString(info.ping) ?? '(empty)'}</div>
         </div>
@@ -76,6 +77,7 @@ function Pings(props: {
                 <h3>Pings</h3>
                 <div role="row" class="listrow listheader">
                     <div role="columnheader" class="ping-date">Date</div>
+                    <div role="columnheader" class="ping-build">Build ID</div>
                     <div role="columnheader" class="ping-type">Crash Type</div>
                     <div role="columnheader" class="ping-reason">Reason</div>
                 </div>
@@ -93,6 +95,7 @@ Pings.Summary = (props: {
     return html`<div role="table" class="condense">
         <div role="row" class="listrow listheader">
             <div role="columnheader" class="ping-date">Date</div>
+            <div role="columnheader" class="ping-build">Build ID</div>
             <div role="columnheader" class="ping-type">Crash Type</div>
             <div role="columnheader" class="ping-reason">Reason</div>
         </div>

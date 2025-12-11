@@ -61,6 +61,9 @@
 .listrow > .ping-date {
 	width: 10ch;
 }
+.listrow > .ping-build {
+	width: 24ch;
+}
 .listrow > .ping-type {
 	width: 40ch;
 	text-overflow: ellipsis;
