@@ -11,6 +11,9 @@ NODE_ENV = "development"
 [functions."store-ping-data-background"]
 included_files = ["./netlify/functions/store-ping-data-background/*.sql"]
 
+[functions."compare"]
+included_files = ["./netlify/functions/compare/*.sql"]
+
 [dev]
 command = "bun run bun/serve.ts"
 port = 8888
