@@ -1,7 +1,7 @@
 import type { Ping } from "app/data/source";
 import type { StringIndex } from "app/data/format";
 import { allPings } from "app/data/source";
-import { createMemo, createEffect, createSignal, on, untrack } from "solid-js";
+import { createMemo, createEffect, on, untrack } from "solid-js";
 import html from "solid-js/html";
 import SingleSelectable from "app/components/Selectable";
 import Layout from "app/components/Layout";
