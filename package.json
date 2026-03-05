@@ -28,6 +28,7 @@
     "@google-cloud/bigquery": "^7.9.4",
     "@netlify/blobs": "^8.2.0",
     "@netlify/functions": "^3.1.10",
+    "@solidjs/router": "^0.15.4",
     "normalize.css": "^8.0.1",
     "solid-js": "^1.9.7",
     "virtua": "^0.40.4"

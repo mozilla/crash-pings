@@ -19,3 +19,9 @@ command = "bun run bun/serve.ts"
 port = 8888
 targetPort = 3000
 framework = "#custom"
+
+# This redirects the extra paths we want to the index for the SPA to handle on the client.
+[[redirects]]
+from = "/compare"
+to = "/index.html"
+status = 200
