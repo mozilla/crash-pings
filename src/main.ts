@@ -1,10 +1,18 @@
 import { render } from "solid-js/web";
 import html from "solid-js/html";
-import { Router, Route } from "@solidjs/router";
+import { Router } from "@solidjs/router";
 import App from "./components/App";
+import Compare from "./components/Compare";
 
-render(() => html`
-    <${Router}>
-        <${Route} path="/" component=${App} />
-    <//>
-`, document.body)
+const routes = [
+    {
+        path: "/",
+        component: App,
+    },
+    {
+        path: "/compare",
+        component: Compare,
+    }
+];
+
+render(() => html`<${Router}>${routes}<//>`, document.body)

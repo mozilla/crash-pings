@@ -1,0 +1,10 @@
+div.compare-result {
+	position: relative;
+	border-radius: 8px;
+	padding: 8px;
+	background-color: #fff7;
+}
+
+div.compare-result span {
+	position: absolute;
+}
