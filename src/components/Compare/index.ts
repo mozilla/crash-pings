@@ -57,9 +57,14 @@ export default function Compare() {
     const [channel, setChannel] = createSignal("release");
     const [os, setOs] = createSignal("any");
     const [process, setProcess] = createSignal("any");
-    const [version, setVersion] = createSignal(148);
+    const [version, setVersion] = createSignal(1);
     const [compareReq, setCompareReq] = createSignal<CompareRequest>();
     const navigate = useNavigate();
+
+    (async () => {
+        const result = await fetch("https://whattrainisitnow.com/api/release/schedule/?version=release").then(r => r.json());
+        setVersion(parseInt(result.version));
+    })();
 
     const load = () => {
         function nullifyAny(v: string): string | null {
