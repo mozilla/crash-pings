@@ -8,3 +8,8 @@ div.compare-result {
 div.compare-result span {
 	position: absolute;
 }
+
+div.compare-result span.status {
+	position: relative;
+	float: right;
+}

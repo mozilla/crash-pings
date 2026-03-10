@@ -1,7 +1,9 @@
 import html from "solid-js/html";
-import { createSignal, createResource, Show, Suspense } from "solid-js";
+import { createSignal, createResource, untrack, Show, Suspense } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import Layout from "app/components/Layout";
 import { getCompareData, type CompareRequest, type CompareResponse } from "app/data/compare";
+import settings from "app/settings";
 import "./component.css";
 
 type VersionInfo = {
@@ -16,6 +18,7 @@ export default function Compare() {
     const [process, setProcess] = createSignal("any");
     const [version, setVersion] = createSignal(148);
     const [compareReq, setCompareReq] = createSignal<CompareRequest>();
+    const navigate = useNavigate();
 
     const load = () => {
         function nullifyAny(v: string): string | null {
@@ -137,6 +140,7 @@ export default function Compare() {
         const dx2X = (x: number) => Math.round((x - xMin) * xScale);
         const dy2Y = (y: number) => height - Math.round((y - yMin) * yScale);
         const slope = (disp: number, stddev: number) => {
+            // Derivative of normal distribution pdf wrt disp = (x-mean)
             return -disp * Math.exp(-0.5 * Math.pow(disp / stddev, 2)) / (Math.pow(stddev, 3) * Math.sqrt(2 * Math.PI));
         };
 
@@ -147,6 +151,7 @@ export default function Compare() {
             const pathPoints: string[] = [];
             let last = null;
 
+            // Create a quadratic curve using each STDDEV_STEP between (-STDDEV_SPREAD..STDDEV_SPREAD) as a point.
             for (let factor = -STDDEV_SPREAD; factor <= STDDEV_SPREAD; factor += STDDEV_STEP) {
                 const dx = avg + stddev * factor;
                 const plotX = dx2X(dx);
@@ -157,6 +162,8 @@ export default function Compare() {
                 if (last === null) {
                     pathPoints.push(`M ${plotX} ${plotY}`);
                 } else {
+                    // Find the intersection of the tangents at the former and
+                    // current point for the quadratic curve.
                     const intersectDX = ((dy - s * dx) - (last.dy - last.s * last.dx)) / (last.s - s);
                     const intersectDY = s * intersectDX + (dy - s * dx);
                     pathPoints.push(`Q ${dx2X(intersectDX)} ${dy2Y(intersectDY)}, ${plotX} ${plotY}`);
@@ -166,6 +173,10 @@ export default function Compare() {
 
             return pathPoints.join(" ");
         };
+
+        function emptyAny(v: string | null): { selected?: string[] } {
+            return v === null ? {} : { selected: [v] };
+        }
 
         const resultEls = results.map(s => {
             let baselinePath;
@@ -177,14 +188,31 @@ export default function Compare() {
                 targetPath = makePath(s.target_average, s.target_stddev);
             }
 
-            const targetColor = s.baseline_average === null ? "#f00" :
-                (s.target_average ?? 0) > (s.baseline_average) ? "#a00" : "#0a0";
+            const targetStatus = s.baseline_average === null ? { text: "NEW", color: "#f00" }
+                : s.target_average === null ? { text: "ABSENT", color: "#0f0" }
+                    : s.target_average > s.baseline_average ? { text: `+${s.welch_t?.toFixed(1)}`, color: "#a00" }
+                        : { text: `${s.welch_t?.toFixed(1)}`, color: "#0a0" };
+
+            const click = (_: Event) => {
+                settings.selection = {
+                    channel: emptyAny(untrack(channel)),
+                    os: emptyAny(untrack(os)),
+                    process: emptyAny(untrack(process)),
+                    // FIXME: this doesn't successfully select the version
+                    // (since we need to list the versions, not just a prefix).
+                    version: { selected: [untrack(version).toString()] },
+                };
+                // TODO: select the full time period of the target release?
+                settings.signature = s.signature;
+                navigate("/");
+            };
 
             return html`<div class="compare-result">
-                <span>${s.signature}</span>
+                <span role="button" title="View crashes" onClick=${click}>${s.signature}</span>
+                <span class="status" style=${{ color: targetStatus.color }}>${targetStatus.text}</span>
                 <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height=${height}>
                     <path d=${baselinePath} fill="#aaa" fill-opacity="0.6" stroke="#aaa" />
-                    <path d=${targetPath} fill="${targetColor}" fill-opacity="0.6" stroke="${targetColor}" />
+                    <path d=${targetPath} fill="${targetStatus.color}" fill-opacity="0.6" stroke="${targetStatus.color}" />
                 </svg>
             </div>`;
         });
@@ -202,7 +230,7 @@ export default function Compare() {
                 <fieldset>
                     <legend>channel</legend>
                     <${Select} value=${channel} setValue=${setChannel}>
-                        ${["release", "beta", "nightly"]}
+                        ${["release", "beta", "nightly", "any"]}
                     <//>
                 </fieldset>
                 <fieldset>

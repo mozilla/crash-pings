@@ -186,7 +186,7 @@ function saveSettings(settings: Settings): LatestSavedSettings {
     return s;
 }
 
-export async function load(): Promise<Settings> {
+export async function load(): Promise<Settings | undefined> {
     const id = window.location.hash.substr(1);
     if (id) {
         const response = await fetch(`/link/${id}`);
@@ -197,7 +197,6 @@ export async function load(): Promise<Settings> {
             window.location.hash = "";
         }
     }
-    return loadSettings();
 }
 
 let loading: boolean = true;
@@ -214,7 +213,10 @@ const settings = createRoot(() => {
 
 
 export async function loadAndPopulateSettings(f: () => void): Promise<void> {
-    modifyMutable(settings, reconcile(await load()));
+    const loadedSettings = await load();
+    if (loadedSettings) {
+        modifyMutable(settings, reconcile(loadedSettings));
+    }
     f();
     loading = false;
 }
