@@ -5,8 +5,16 @@ div.compare-result {
 	background-color: #fff7;
 }
 
-div.compare-result span {
+div.compare-result div.info {
 	position: absolute;
+	left: 8px;
+	right: 8px;
+	top: 8px;
+	bottom: 8px;
+}
+
+div.compare-result div.info a {
+	margin-right: 1ch;
 }
 
 div.compare-result span.status {

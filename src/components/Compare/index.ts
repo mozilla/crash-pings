@@ -2,7 +2,7 @@ import html from "solid-js/html";
 import { createSignal, createResource, untrack, Show, Suspense } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import Layout from "app/components/Layout";
-import { getCompareData, type CompareRequest, type CompareResponse } from "app/data/compare";
+import { getCompareData, type CompareRequest, type CompareSignature } from "app/data/compare";
 import settings from "app/settings";
 import "./component.css";
 
@@ -11,6 +11,47 @@ type VersionInfo = {
     merge_day: string,
     nightly_start: string,
 };
+
+type BugInfo = {
+    id: number,
+    is_open: string,
+};
+
+
+type CompareResponseWithBugs = {
+    results: (CompareSignature & { bugs?: BugInfo[] })[]
+} | {
+    error: string
+};
+
+async function getCompareDataWithBugs(r: CompareRequest): Promise<CompareResponseWithBugs> {
+    const response = await getCompareData(r);
+    if ("error" in response) {
+        return response;
+    } else {
+        try {
+            const signaturesParam = response.results.map(r => encodeURIComponent(`[@ ${r.signature}]`)).join(",");
+            const { bugs }: { bugs: (BugInfo & { cf_crash_signature: string })[] }
+                = await fetch(`https://bugzilla.mozilla.org/rest/bug?include_fields=id,is_open,cf_crash_signature&cf_crash_signature=${signaturesParam}`)
+                    .then(r => r.json());
+            const bugSignatures = new Map<string, BugInfo[]>();
+            for (const { cf_crash_signature, ...bug } of bugs) {
+                const signatures = cf_crash_signature.split(/\r?\n|\r|\n/g).map(s => s.match(/\[@ (.*)\]/)?.[1]);
+                for (const sig of signatures) {
+                    if (!sig) continue;
+                    if (!bugSignatures.has(sig)) {
+                        bugSignatures.set(sig, []);
+                    }
+                    bugSignatures.get(sig)!.push(bug);
+                }
+            }
+            return { results: response.results.map(s => { return { ...s, bugs: bugSignatures.get(s.signature) }; }) };
+        } catch (e) {
+            console.error(`error fetching bug information: ${e}`);
+            return response;
+        }
+    }
+}
 
 export default function Compare() {
     const [channel, setChannel] = createSignal("release");
@@ -75,7 +116,7 @@ export default function Compare() {
         })();
     };
 
-    const [results] = createResource(compareReq, getCompareData);
+    const [results] = createResource(compareReq, getCompareDataWithBugs);
 
     const versionChanged = (e: Event) => {
         const value = (e.currentTarget! as HTMLInputElement).valueAsNumber!;
@@ -97,7 +138,7 @@ export default function Compare() {
         `;
     }
 
-    function showResults(r: CompareResponse) {
+    function showResults(r: CompareResponseWithBugs) {
         const STDDEV_MIN = 10;
         const STDDEV_MAX = 80;
         const STDDEV_SPREAD = 4;
@@ -193,6 +234,13 @@ export default function Compare() {
                     : s.target_average > s.baseline_average ? { text: `+${s.welch_t?.toFixed(1)}`, color: "#a00" }
                         : { text: `${s.welch_t?.toFixed(1)}`, color: "#0a0" };
 
+            s.bugs?.sort((a, b) => a.is_open === b.is_open ? a.id - b.id : +b.is_open - +a.is_open);
+            const buglinks = s.bugs?.map(b => html`
+                <a style=${{ "text-decoration": b.is_open ? "none" : "line-through" }} href=${`https://bugzilla.mozilla.org/${b.id}`}>
+                    ${b.id}
+                </a>
+            `);
+
             const click = (_: Event) => {
                 settings.selection = {
                     channel: emptyAny(untrack(channel)),
@@ -208,8 +256,11 @@ export default function Compare() {
             };
 
             return html`<div class="compare-result">
-                <span role="button" title="View crashes" onClick=${click}>${s.signature}</span>
-                <span class="status" style=${{ color: targetStatus.color }}>${targetStatus.text}</span>
+                <div class="info">
+                    <span class="status" style=${{ color: targetStatus.color }}>${targetStatus.text}</span>
+                    <span role="button" title="View crashes" onClick=${click}>${s.signature}</span><br>
+                    ${buglinks}
+                </div>
                 <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height=${height}>
                     <path d=${baselinePath} fill="#aaa" fill-opacity="0.6" stroke="#aaa" />
                     <path d=${targetPath} fill="${targetStatus.color}" fill-opacity="0.6" stroke="${targetStatus.color}" />
