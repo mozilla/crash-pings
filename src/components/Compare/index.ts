@@ -24,15 +24,22 @@ type CompareResponseWithBugs = {
     error: string
 };
 
+// Regex.escape will be in typescript 5.9.4+
+declare global {
+    interface RegExpConstructor {
+        escape(str: string): string;
+    }
+}
+
 async function getCompareDataWithBugs(r: CompareRequest): Promise<CompareResponseWithBugs> {
     const response = await getCompareData(r);
     if ("error" in response) {
         return response;
     } else {
         try {
-            const signaturesParam = response.results.map(r => encodeURIComponent(`[@ ${r.signature}]`)).join(",");
+            const signaturesParam = encodeURIComponent("\\[@ (" + response.results.map(r => RegExp.escape(r.signature)).join("|") + ")\\]");
             const { bugs }: { bugs: (BugInfo & { cf_crash_signature: string })[] }
-                = await fetch(`https://bugzilla.mozilla.org/rest/bug?include_fields=id,is_open,cf_crash_signature&cf_crash_signature=${signaturesParam}`)
+                = await fetch(`https://bugzilla.mozilla.org/rest/bug?include_fields=id,is_open,cf_crash_signature&f1=cf_crash_signature&o1=regexp&v1=${signaturesParam}`)
                     .then(r => r.json());
             const bugSignatures = new Map<string, BugInfo[]>();
             for (const { cf_crash_signature, ...bug } of bugs) {
