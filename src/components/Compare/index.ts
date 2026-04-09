@@ -43,6 +43,8 @@ async function getCompareDataWithBugs(r: CompareRequest): Promise<CompareRespons
                     .then(r => r.json());
             const bugSignatures = new Map<string, BugInfo[]>();
             for (const { cf_crash_signature, ...bug } of bugs) {
+                // Sometimes bugzilla returns an entry without the field set (even though it is in the bug), so we have to miss those.
+                if (cf_crash_signature === undefined) continue;
                 const signatures = cf_crash_signature.split(/\r?\n|\r|\n/g).map(s => s.match(/\[@ (.*)\]/)?.[1]);
                 for (const sig of signatures) {
                     if (!sig) continue;
