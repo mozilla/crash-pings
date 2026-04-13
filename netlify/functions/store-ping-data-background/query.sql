@@ -6,7 +6,7 @@ select
     document_id as crashid,
     crash_app_display_version as version,
     normalized_os as os,
-    normalized_os_version as osversion,
+    IF(normalized_os = 'Windows', CONCAT(normalized_os_version, "@", client_info.windows_build_number), normalized_os_version) as osversion,
     client_info.architecture as arch,
     STRING(DATE(metrics.datetime.crash_time)) as date,
     metrics.string.crash_moz_crash_reason as reason,

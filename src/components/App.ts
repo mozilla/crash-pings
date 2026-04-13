@@ -15,7 +15,7 @@ import { loadAndPopulateSettings } from "app/settings";
 
 function osVersionName(os: string): ((version: string) => string | undefined) | undefined {
     function windows_nt_10_label(version: string): string {
-        const [_ntversion, build] = version.split("@", 1);
+        const [_ntversion, build] = version.split("@", 2);
         if (parseInt(build) >= 22000) {
             return 'Windows 11';
         }
