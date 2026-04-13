@@ -48,5 +48,5 @@ div.day, div.message {
 }
 
 span.shrink {
-	height: 2ex;
+	line-height: 2ex;
 }
