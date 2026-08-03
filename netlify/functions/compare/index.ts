@@ -1,27 +1,12 @@
 import { readFile } from "node:fs/promises";
 import type { Config, Context } from "@netlify/functions";
 import { BigQuery } from "@google-cloud/bigquery";
-import type { CompareRequest, CompareResponse, CompareSignature, Parameters } from "app/data/compare.ts";
+import type { CompareRequest, CompareResponse, CompareSignature } from "app/data/compare.ts";
 
 const BIGQUERY_PROJECT_ID = "moz-fx-data-shared-prod";
 
-const PARAMETERS_TYPE: { [K in keyof Parameters]: string } = {
-    start_date: "STRING",
-    end_date: "STRING",
-    channel: "STRING",
-    version: "STRING",
-    buildid: "STRING",
-    process: "STRING",
-    os: "STRING",
-    os_version: "STRING",
-    arch: "STRING",
-};
-
-const QUERY_PARAM_TYPES: { [K in keyof CompareRequest]: any } = {
-	use_client_count: "BOOL",
-	top_crash_limit: "INT64",
-	baseline: PARAMETERS_TYPE,
-	target: PARAMETERS_TYPE,
+const QUERY_PARAM_TYPES = {
+	major_version: "INT64",
 };
 
 async function run_query(params: CompareRequest): Promise<CompareSignature[]> {
@@ -48,7 +33,7 @@ export default async (request: Request, _context: Context): Promise<Response> =>
 	// TODO: validate received JSON
 	const response: CompareResponse = await run_query(params)
 		.then(results => { return { results }; })
-		.catch(error => { 
+		.catch(error => {
 			console.error(error);
 			return { error: "The query failed. Contact an administrator: this is a bug." };
 		});

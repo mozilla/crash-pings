@@ -1,35 +1,21 @@
-export type RegExpString = string;
-
-export type Parameters = {
-    start_date: string,
-    end_date: string,
-    channel: string | null,
-    version: RegExpString | null,
-    buildid: RegExpString | null,
-    process: string | null,
-    os: string | null,
-    os_version: RegExpString | null,
-    arch: string | null,
-};
-
 export type CompareRequest = {
-    use_client_count: boolean,
-    top_crash_limit: number,
-    baseline: Parameters,
-    target: Parameters,
+    major_version: number,
 };
 
-export type CompareSignature = {
+export type CompareInfo = {
     signature: string,
-    baseline_average: number | null,
-    baseline_stddev: number | null,
-    target_average: number | null,
-    target_stddev: number | null,
-    welch_t: number | null,
+    process_type: string,
+    os: string,
+    baseline: boolean,
+    average: number,
+    stddev: number,
+    max: number,
+    samples: number,
+    top_crasher_rank: number,
 };
 
 export type CompareResponse = {
-    results: CompareSignature[]
+    results: CompareInfo[]
 } | {
     error: string
 };
