@@ -451,12 +451,10 @@ export default function Compare() {
 
                 const click = (_: Event) => {
                     settings.selection = {
-                        channel: { selected: ["release"] },
                         os: emptyAny(untrack(os)),
                         process: emptyAny(untrack(process)),
-                        // FIXME: this doesn't successfully select the version
-                        // (since we need to list the versions, not just a prefix).
-                        version: { selected: [untrack(version).toString()] },
+                        channel: {},
+                        version: {},
                     };
                     // TODO: select the full time period of the target release?
                     settings.signature = s.signature;
