@@ -1,5 +1,15 @@
+export type CompareVersion = { build: string }
+    | { major: number, minor?: number, patch?: number };
+
+export type RequestVersions = {
+    nightly?: CompareVersion,
+    beta?: CompareVersion,
+    release?: CompareVersion,
+    esr?: CompareVersion
+};
+
 export type CompareRequest = {
-    major_version: number,
+    versions: RequestVersions
 };
 
 export type CompareInfo = {

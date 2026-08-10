@@ -1,10 +1,11 @@
 import html from "solid-js/html";
-import { createSignal, createResource, untrack, Show, Suspense } from "solid-js";
+import { createMemo, createSignal, createResource, untrack, Show, Suspense } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import Layout from "app/components/Layout";
-import { getCompareData, type CompareRequest, type CompareInfo } from "app/data/compare";
+import { getCompareData, type CompareRequest, type CompareInfo, type RequestVersions } from "app/data/compare";
 import settings from "app/settings";
 import "./component.css";
+import { getVersions, VERSION_HELP, type VersionConstraint } from "./version.ts";
 
 type BugInfo = {
     id: number,
@@ -181,23 +182,81 @@ function loadStatusToString(s: LoadStatus): string {
     }
 }
 
+function reduceVersions(constraints: VersionConstraint[]): RequestVersions {
+    const ret: RequestVersions = {};
+    for (const c of constraints) {
+        if ("build" in c) {
+            ret[c.channel] = { build: c.build };
+            continue;
+        }
+        switch (c.channel) {
+            case "nightly":
+                ret.nightly = { major: c.major };
+                ret.beta = { major: c.major };
+                ret.release = { major: c.major };
+                ret.esr = { major: c.major };
+                break;
+            case "beta":
+                ret.beta = { major: c.major, minor: c.betanumber };
+                ret.release = { major: c.major };
+                ret.esr = { major: c.major };
+                break;
+            case "release":
+            case "esr":
+                ret[c.channel] = { major: c.major, minor: c.minor, patch: c.patch };
+                if (c.channel == "release") {
+                    if ((c.minor ?? 0) == 0 && (c.patch ?? 0) === 0) {
+                        ret.esr = { major: c.major };
+                    } else {
+                        ret.esr = { major: c.major + 1 };
+                    }
+                }
+                break;
+        }
+    }
+    return ret;
+}
+
 export default function Compare() {
     const [os, setOs] = createSignal("any");
     const [process, setProcess] = createSignal("any");
-    const [version, setVersion] = createSignal(1);
+    const [version, setVersion] = createSignal("");
+    const [versionError, setVersionError] = createSignal<any>();
     const [compareReq, setCompareReq] = createSignal<CompareRequest>();
     const [loadStatus, setLoadStatus] = createSignal(LoadStatus.None);
-    const [cutoff, setCutoff] = createSignal<number>();
+    const [minScore, setMinScore] = createSignal<number>();
+    const [minAvg, setMinAvg] = createSignal<number>();
     const navigate = useNavigate();
+
+    const versionConstraints = createMemo(() => version() != "" ? getVersions(version()) : null);
 
     (async () => {
         const result = await fetch("https://whattrainisitnow.com/api/release/schedule/?version=release").then(r => r.json());
-        setVersion(parseInt(result.version));
+        setVersion(result.version);
     })();
 
     const load = () => {
+        const result = versionConstraints();
+        if (result === null) {
+            setVersionError("no version provided");
+            return;
+        }
+        if ("errors" in result) {
+            setVersionError(
+                result.errors.flatMap(s => [
+                    `${s.message} (at ${s.start}-${s.start + s.length})`,
+                    html`<br>`
+                ])
+            );
+            return;
+        }
+        setVersionError();
+
+        if (!("success" in result)) throw new Error("parsing error");
+        const constraints = result.success;
+        constraints;
         setCompareReq({
-            major_version: version(),
+            versions: reduceVersions(constraints),
         });
     };
 
@@ -217,7 +276,7 @@ export default function Compare() {
     });
 
     const versionChanged = (e: Event) => {
-        const value = (e.currentTarget! as HTMLInputElement).valueAsNumber!;
+        const value = (e.currentTarget! as HTMLInputElement).value;
         setVersion(value);
     };
 
@@ -236,6 +295,31 @@ export default function Compare() {
         `;
     }
 
+    function OptionalNumber(props: {
+        label: string,
+        value: number | undefined,
+        setValue: (n?: number) => void,
+        defaultValue?: number,
+    }) {
+        const checkboxChange = (e: Event) => {
+            const checked = (e.currentTarget! as HTMLInputElement).checked;
+            if (checked) {
+                props.setValue(props.defaultValue);
+            } else {
+                props.setValue();
+            }
+        };
+        return html`<${Layout} row size="content">
+            <input type="checkbox" checked=${() => props.value !== undefined} onChange=${checkboxChange} />
+            <${Layout} fill>
+                <fieldset disabled=${() => props.value === undefined}>
+                    <legend>${props.label}</legend>
+                    <input class="layout" type="number" value="${() => props.value ?? props.defaultValue}" onChange=${(e: Event) => props.setValue((e.currentTarget! as HTMLInputElement).valueAsNumber!)} />
+                </fieldset>
+            <//>
+        <//>`;
+    }
+
     function showResults(r: CompareResponseWithBugs) {
         const STDDEV_MIN = 10;
         const STDDEV_MAX = 80;
@@ -251,11 +335,13 @@ export default function Compare() {
         const resultEls = () => {
             const process_val = process();
             const os_val = os();
-            const cutoff_val = cutoff();
+            const minScore_val = minScore();
+            const minAvg_val = minAvg();
             const filtered = results.filter(s => {
                 return (os_val == "any" || s.os == os_val)
                     && (process_val == "any" || s.process_type == process_val)
-                    && (cutoff_val === undefined || s.baseline === undefined || (s.welch_t !== undefined && s.welch_t >= cutoff_val));
+                    && (minScore_val === undefined || s.baseline === undefined || (s.welch_t !== undefined && s.welch_t >= minScore_val))
+                    && (minAvg_val === undefined || (s.target !== undefined && s.target.average >= minAvg_val));
             });
             sortSignatures(filtered);
 
@@ -409,45 +495,30 @@ export default function Compare() {
         <//>`;
     }
 
-    const cutoffCheckboxChange = (e: Event) => {
-        const checked = (e.currentTarget! as HTMLInputElement).checked;
-        if (checked) {
-            setCutoff(5);
-        } else {
-            setCutoff();
-        }
-    };
-
     return html`
         <${Layout} row>
             <${Layout} column frame size="30ch">
-                <fieldset>
+                <fieldset title="${VERSION_HELP}">
                     <legend>version</legend>
-                    <input id="version" type="number" value=${version} onChange=${versionChanged} style=${{ width: "100%", "box-sizing": "border-box" }} />
+                    <input id="version" type="text" value=${version} onInput=${versionChanged} style=${{ width: "100%", "box-sizing": "border-box" }} />
+                    <span style=${{ color: "red" }}>${versionError}</span>
                 </fieldset>
                 <button onClick=${load}>Load</button>
                 <${Show} when=${results}>
-                <fieldset>
-                    <legend>os</legend>
-                    <${Select} value=${os} setValue=${setOs}>
-                        ${["any", "Android", "Linux", "Mac", "Windows"]}
-                    <//>
-                </fieldset>
-                <fieldset>
-                    <legend>process</legend>
-                    <${Select} value=${process} setValue=${setProcess}>
-                        ${["any", "main", "content", "gmplugin", "gpu", "rdd", "socket", "utility"]}
-                    <//>
-                </fieldset>
-                <${Layout} row size="content">
-                    <input type="checkbox" checked=${() => cutoff() !== undefined} onChange=${cutoffCheckboxChange} />
-                    <${Layout} fill>
-                        <fieldset disabled=${() => cutoff() === undefined}>
-                            <legend>minimum score</legend>
-                            <input class="layout" type="number" value="${() => cutoff() ?? 5}" onChange=${(e: Event) => setCutoff((e.currentTarget! as HTMLInputElement).valueAsNumber!)} />
-                        </fieldset>
-                    <//>
-                <//>
+                    <fieldset>
+                        <legend>os</legend>
+                        <${Select} value=${os} setValue=${setOs}>
+                            ${["any", "Android", "Linux", "Mac", "Windows"]}
+                        <//>
+                    </fieldset>
+                    <fieldset>
+                        <legend>process</legend>
+                        <${Select} value=${process} setValue=${setProcess}>
+                            ${["any", "main", "content", "gmplugin", "gpu", "rdd", "socket", "utility"]}
+                        <//>
+                    </fieldset>
+                    <${OptionalNumber} label="min average crashes" defaultValue=${25} value=${minAvg} setValue=${setMinAvg}><//>
+                    <${OptionalNumber} label="min score" defaultValue=${5} value=${minScore} setValue=${setMinScore}><//>
                 <//>
             <//>
             <${Suspense} fallback=${html`<span style=${{ width: "50ch" }}>${() => loadStatusToString(loadStatus())}</span>`}>
