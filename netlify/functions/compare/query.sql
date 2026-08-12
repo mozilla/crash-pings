@@ -75,4 +75,4 @@ signature_counts as (
 
 select *
 from top_crashers
-right join (select os, process_type, signature from top_crashers where top_crasher_rank <= 20) using (os, process_type, signature)
+right join (select distinct os, process_type, signature from top_crashers where top_crasher_rank <= 20) using (os, process_type, signature)
