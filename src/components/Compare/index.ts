@@ -252,7 +252,6 @@ export default function Compare() {
         }
         setVersionError();
 
-        if (!("success" in result)) throw new Error("parsing error");
         const constraints = result.success;
         constraints;
         setCompareReq({

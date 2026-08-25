@@ -23,21 +23,169 @@ export type VersionConstraint =
     | ({ channel: "beta" } & BuildOr<{ major: number, betanumber?: number }>)
     | ({ channel: "release" | "esr" } & BuildOr<{ major: number, minor?: number, patch?: number }>);
 
-export type ParseError = { message: string, start: number, length: number };
 export type Parsed<T> = { success: T } | { errors: ParseError[] } | { next: true };
+export type ParseError = { message: string, start: number, length: number };
 
-type ParseInput = { s: string, offset: number };
-type Parser<T> = (i: ParseInput) => Parsed<T>;
+class ParseInput {
+    s: string;
+    offset: number;
 
-export function getVersions(s: string): Parsed<VersionConstraint[]> {
-    return parseVersions({ s: s.toLowerCase(), offset: 0 });
+    constructor(s: string, offset: number) {
+        this.s = s;
+        this.offset = offset;
+    }
+
+    error<T>(message: string): Parsed<T> {
+        return { errors: [{ message, start: this.offset, length: this.s.length }] };
+    }
+
+    forward(chars: number): ParseInput {
+        return new ParseInput(this.s.substring(chars), this.offset + chars);
+    }
+
+    backward(chars: number): ParseInput {
+        return new ParseInput(this.s.substring(0, this.s.length - chars), this.offset);
+    }
+
+    matchStart(start: string): MatchParseInput | null {
+        const matches = this.s.match(new RegExp("^\\s*" + start + "\\s*", "d"));
+        if (!matches) {
+            return null;
+        }
+        return new MatchParseInput(
+            this.forward(matches[0].length),
+            matches.indices!.map(([s, e]) => new ParseInput(this.s.substring(s, e), this.offset + s))
+        );
+    }
+
+    matchEnd(end: string): MatchParseInput | null {
+        const matches = this.s.match(new RegExp(end + "\\s*$", "d"));
+        if (!matches) {
+            return null;
+        }
+        return new MatchParseInput(
+            this.backward(matches[0].length),
+            matches.indices!.map(([s, e]) => new ParseInput(this.s.substring(s, e), this.offset + s))
+        );
+    }
 }
 
-const zeroOrNumber = or([optZero, number]);
+class MatchParseInput extends ParseInput {
+    matches: ParseInput[];
 
-const dottedVersion = map(
-    pipe(split("."), parseMany(zeroOrNumber)),
-    nums => {
+    constructor(base: ParseInput, matches: ParseInput[]) {
+        super(base.s, base.offset);
+        this.matches = matches;
+    }
+}
+
+class Parser<Out, In = ParseInput> {
+    call: (i: In) => Parsed<Out>;
+
+    constructor(call: (i: In) => Parsed<Out>) {
+        this.call = call;
+    }
+
+    pipe<U>(next: Parser<U, Out>): Parser<U, In> {
+        return new Parser(input => {
+            const result = this.call(input);
+            if ("success" in result) {
+                return next.call(result.success);
+            } else {
+                return result;
+            }
+        });
+    }
+
+    then<U>(next: Parser<U, Out>): Parser<U, In> {
+        return new Parser(input => {
+            const result = this.call(input);
+            if ("success" in result) {
+                return next.call(result.success);
+            } else {
+                return { next: true };
+            }
+        });
+    }
+
+    many(): Parser<Out[], In[]> {
+        return new Parser(is => collect(is.map(this.call)));
+    }
+
+    map<U>(t: (i: Out) => U): Parser<U, In> {
+        return new Parser(i => {
+            const result = this.call(i);
+            if ("success" in result) {
+                try {
+                    return { success: t(result.success) };
+                } catch (message) {
+                    if (typeof message === "string" && i instanceof ParseInput) {
+                        return i.error(message);
+                    } else {
+                        throw message;
+                    }
+                }
+            } else {
+                return result;
+            }
+        });
+    }
+
+    withMatches<M>(matches: (Parser<M> | null)[]): Parser<[Out, (M | null)[]], MatchParseInput> {
+        return new Parser(input => {
+            const matchResults: Parsed<M | null>[] = [];
+            for (let i = 0; i < Math.min(input.matches.length, matches.length); i++) {
+                const matchParser = matches[i];
+                matchResults.push(matchParser ? matchParser.call(input.matches[i]) : { success: null });
+            }
+            return concat(this.call(input as In), collect(matchResults));
+        });
+    }
+}
+
+export function getVersions(s: string): { success: VersionConstraint[] } | { errors: ParseError[] } {
+    const result = parseVersions.call(new ParseInput(s.toLowerCase(), 0));
+    if ("next" in result) {
+        throw new Error("unterminated next");
+    }
+    return result;
+}
+
+const optZero = new Parser<0>(input => {
+    if (input.s == "0") {
+        return { success: 0 };
+    } else {
+        return { next: true };
+    }
+});
+
+const word = new Parser<string>(input => {
+    const matches = input.s.match(/\s*\w+\s*/);
+    if (!matches) {
+        return input.error("expected word");
+    }
+    return {
+        success: matches[0].trim()
+    };
+});
+
+const nonZeroNumber = new Parser<number>(input => {
+    if (!input.s.match(/^[1-9][0-9]*$/)) {
+        return input.error("expected a number");
+    } else {
+        const num = parseInt(input.s);
+        if (isNaN(num)) {
+            return input.error("invalid decimal number");
+        }
+        return { success: num };
+    }
+});
+
+const number = or([optZero, nonZeroNumber]);
+
+const dottedVersion = split(".")
+    .pipe(number.many())
+    .map(nums => {
         if (nums.length == 0) {
             throw "expected a number";
         }
@@ -52,81 +200,65 @@ const dottedVersion = map(
             minor: nums.at(1),
             patch: nums.at(2)
         };
-    }
-);
+    });
 
-const build = then(
-    keyword("build"),
-    map(word, build => { return { build }; })
-);
+const build = keyword("build")
+    .then(word.map(build => { return { build }; }));
 
-const nightlyNum = then(
-    suffixKeyword("a1"),
-    then(
-        suffixKeyword(".0", true),
-        map(number, major => { return { major }; })
-    )
-);
+const nightlyNum =
+    suffixKeyword("a1")
+        .then(suffixKeyword(".0", true))
+        .then(nonZeroNumber.map(major => { return { major }; }));
 
-const betaNum = then(
-    suffixKeyword("b([1-9][0-9]*)"),
-    map(
-        withMatches(
-            then(suffixKeyword(".0", true), number),
-            [null, number]
-        ),
-        ([major, [_, betanumber]]) => {
-            return { major, betanumber: betanumber! };
-        }
-    )
-);
+const betaNum =
+    suffixKeyword("b([1-9][0-9]*)")
+        .then(suffixKeyword(".0", true)
+            .then(nonZeroNumber)
+            .withMatches([null, nonZeroNumber])
+            .map(([major, [_, betanumber]]) => {
+                return { major, betanumber: betanumber! };
+            }));
 
-const nightlyKeyed = then(
-    keyword("nightly"),
-    map(
-        or<BuildOr<{ major: number }>>([
-            build,
-            nightlyNum,
-            map(number, major => { return { major }; })
-        ]),
-        setChannel("nightly")
-    )
-);
+const nightlyKeyed =
+    keyword("nightly")
+        .then(
+            or<BuildOr<{ major: number }>>([
+                build,
+                nightlyNum,
+                nonZeroNumber.map(major => { return { major }; })
+            ]).map(setChannel("nightly"))
+        );
 
-const betaKeyed = then(
-    keyword("beta"),
-    map(
-        or<BuildOr<{ major: number }>>([
-            build,
-            betaNum,
-            map(number, major => { return { major }; })
-        ]),
-        setChannel("nightly")
-    )
-);
+const betaKeyed =
+    keyword("beta")
+        .then(
+            or<BuildOr<{ major: number }>>([
+                build,
+                betaNum,
+                nonZeroNumber.map(major => { return { major }; })
+            ]).map(setChannel("beta"))
+        );
 
-const esrKeyed = then(
-    keyword("esr"),
-    map(
-        or<BuildOr<{ major: number, minor?: number, patch?: number }>>([
-            build,
-            dottedVersion
-        ]),
-        setChannel("nightly")
-    )
-);
+const esrKeyed =
+    keyword("esr")
+        .then(
+            or<BuildOr<{ major: number, minor?: number, patch?: number }>>([
+                build,
+                dottedVersion
+            ]).map(setChannel("esr"))
+        );
 
 const parseVersion = or<VersionConstraint>([
     nightlyKeyed,
     betaKeyed,
     esrKeyed,
-    map(build, setChannel("release")),
-    map(nightlyNum, setChannel("nightly")),
-    map(betaNum, setChannel("beta")),
-    map(dottedVersion, setChannel("release")),
+    build.map(setChannel("release")),
+    nightlyNum.map(setChannel("nightly")),
+    betaNum.map(setChannel("beta")),
+    dottedVersion.map(setChannel("release")),
 ]);
 
-const parseVersions = pipe(split(","), parseMany(parseVersion));
+const parseVersions = split(",").pipe(parseVersion.many());
 
 function setChannel<S extends string, T>(which: S): (i: T) => T & { channel: S } {
     return i => {
@@ -134,81 +266,16 @@ function setChannel<S extends string, T>(which: S): (i: T) => T & { channel: S }
     }
 }
 
-function optZero(input: ParseInput): Parsed<0> {
-    if (input.s == "0") {
-        return { success: 0 };
-    } else {
-        return { next: true };
-    }
-}
-
 function split(delim: string): Parser<ParseInput[]> {
-    return input => {
+    return new Parser(input => {
         const parts = input.s.split(delim);
         const reduced = parts.reduce<{ ret: ParseInput[], offset: number }>((r, s) => {
-            r.ret.push({ s, offset: r.offset });
+            r.ret.push(new ParseInput(s, r.offset));
             r.offset += s.length + delim.length;
             return r;
         }, { ret: [], offset: input.offset });
         return { success: reduced.ret };
-    }
-}
-
-type MatchParseInput = ParseInput & { matches: ParseInput[] };
-
-function word(input: ParseInput): Parsed<string> {
-    const matches = input.s.match(/\s*\w+\s*/);
-    if (!matches) {
-        return error(input, "expected word");
-    }
-    return {
-        success: matches[0].trim()
-    };
-}
-
-function matchStart(input: ParseInput, start: string): MatchParseInput | null {
-    const matches = input.s.match(new RegExp("^\\s*" + start + "\\s*", "d"));
-    if (!matches) {
-        return null;
-    }
-    return {
-        matches: matches.indices!.map(([s, e]) => { return { s: input.s.substring(s, e), offset: input.offset + s }; }),
-        ...forward(input, matches[0].length)
-    };
-}
-
-function matchEnd(input: ParseInput, end: string): MatchParseInput | null {
-    const matches = input.s.match(new RegExp(end + "\\s*$", "d"));
-    if (!matches) {
-        return null;
-    }
-    return {
-        matches: matches.indices!.map(([s, e]) => { return { s: input.s.substring(s, e), offset: input.offset + s }; }),
-        ...backward(input, matches[0].length)
-    };
-}
-
-function withMatches<T, M>(main: Parser<T>, matches: (Parser<M> | null)[]): (i: MatchParseInput) => Parsed<[T, (M | null)[]]> {
-    return input => {
-        const matchResults: Parsed<M | null>[] = [];
-        for (let i = 0; i < Math.min(input.matches.length, matches.length); i++) {
-            const matchParser = matches[i];
-            matchResults.push(matchParser ? matchParser(input.matches[i]) : { success: null });
-        }
-        return concat(main(input), collect(matchResults));
-    }
-}
-
-function number(input: ParseInput): Parsed<number> {
-    if (!input.s.match(/^[1-9][0-9]*$/)) {
-        return error(input, "expected a number");
-    } else {
-        const num = parseInt(input.s);
-        if (isNaN(num)) {
-            return error(input, "invalid decimal number");
-        }
-        return { success: num };
-    }
+    });
 }
 
 function concat<T, U>(a: Parsed<T>, b: Parsed<U>): Parsed<[T, U]> {
@@ -227,101 +294,44 @@ function concat<T, U>(a: Parsed<T>, b: Parsed<U>): Parsed<[T, U]> {
     return a;
 }
 
-function pipe<T, U>(first: Parser<T>, f: (i: T) => Parsed<U>): Parser<U> {
-    return input => {
-        const result = first(input);
-        if ("success" in result) {
-            return f(result.success);
-        } else {
-            return result;
-        }
-    };
-}
-
-function then<T, U>(cond: Parser<T>, f: (i: T) => Parsed<U>): Parser<U> {
-    return input => {
-        const result = cond(input);
-        if ("success" in result) {
-            return f(result.success);
-        } else {
-            return { next: true };
-        }
-    };
-}
-
 function keyword(word: string): Parser<MatchParseInput> {
-    return input => {
-        const matched = matchStart(input, word);
+    return new Parser(input => {
+        const matched = input.matchStart(word);
         if (!matched) {
-            return error(input, `expected '${word}'`);
+            return input.error(`expected '${word}'`);
         }
         return { success: matched };
-    };
+    });
 }
 
-function suffixKeyword(word: string, optional: true): Parser<ParseInput & { matches?: ParseInput[] }>;
+function suffixKeyword(word: string, optional: true): Parser<ParseInput | MatchParseInput>;
 function suffixKeyword(word: string, optional: false): Parser<MatchParseInput>;
 function suffixKeyword(word: string): Parser<MatchParseInput>;
-function suffixKeyword(word: string, optional: boolean = false): Parser<ParseInput & { matches?: ParseInput[] }> {
-    return input => {
-        const matched = matchEnd(input, word);
+function suffixKeyword(word: string, optional: boolean = false): Parser<ParseInput | MatchParseInput> {
+    return new Parser(input => {
+        const matched = input.matchEnd(word);
         if (!matched) {
             if (optional) {
                 return { success: input };
             } else {
-                return error(input, `expected '${word}'`);
+                return input.error(`expected '${word}'`);
             }
         }
         return { success: matched };
-    };
+    });
 }
 
-function or<T>(options: Parser<T>[]): Parser<T> {
-    return input => {
+function or<T, I = ParseInput>(options: Parser<T, I>[]): Parser<T, I> {
+    return new Parser(input => {
         for (const f of options) {
-            const result = f(input);
+            const result = f.call(input);
             if ("next" in result) {
                 continue;
             }
             return result;
         }
         throw new Error("non-exhaustive or");
-    };
-}
-
-function error<T>(input: ParseInput, message: string): Parsed<T> {
-    return { errors: [{ message, start: input.offset, length: input.s.length }] };
-}
-
-function forward(input: ParseInput, chars: number): ParseInput {
-    return { s: input.s.substring(chars), offset: input.offset + chars };
-}
-
-function backward(input: ParseInput, chars: number): ParseInput {
-    return { s: input.s.substring(0, input.s.length - chars), offset: input.offset };
-}
-
-function parseMany<T>(f: Parser<T>): (is: ParseInput[]) => Parsed<T[]> {
-    return is => collect(is.map(f));
-}
-
-function map<I extends ParseInput, T, U>(f: (i: I) => Parsed<T>, t: (i: T) => U): (i: I) => Parsed<U> {
-    return i => {
-        const result = f(i);
-        if ("success" in result) {
-            try {
-                return { success: t(result.success) };
-            } catch (message) {
-                if (typeof message === "string") {
-                    return error(i, message);
-                } else {
-                    throw message;
-                }
-            }
-        } else {
-            return result;
-        }
-    };
+    });
 }
 
 function collect<T>(is: Parsed<T>[]): Parsed<T[]> {
