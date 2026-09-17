@@ -37,7 +37,19 @@ export default async (_req: Request, context: Context): Promise<Response> => {
 		if (result.length > 1) {
 			console.warn(`more than one result for document_id ${id}, using the first`);
 		}
-		data = `{ "stack": ${result[0].stack}, "java_exception": ${result[0].java_exception} }`;
+		// Filter out exception messages
+		let java_exception = JSON.parse(result[0].java_exception);
+		if (java_exception) {
+			if ("messages" in java_exception) {
+				delete java_exception.messages;
+			}
+			if ("throwables" in java_exception) {
+				for (const throwable of java_exception.throwables) {
+					delete throwable.message;
+				}
+			}
+		}
+		data = `{ "stack": ${result[0].stack}, "java_exception": ${JSON.stringify(java_exception)} }`;
 	}
 
 	return new Response(data, {
